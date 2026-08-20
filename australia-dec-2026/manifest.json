@@ -1,0 +1,12 @@
+{
+  "name": "Australia Road Trip — Dec 2026",
+  "short_name": "AUS Trip",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#F0EEE6",
+  "theme_color": "#16233F",
+  "icons": [
+    { "src": "/trip-dashboard/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

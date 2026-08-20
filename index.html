@@ -3,10 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#16233F">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="/trip-dashboard/icon.svg">
 <title>Trip Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
   :root {
     --ink: #16233F;
@@ -51,9 +55,15 @@
     .stub-ticket::after { right: 20%; top: auto; bottom: -9px; }
   }
 
-  .sync-status { font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); margin: 10px 2px 0; display: flex; align-items: center; gap: 6px; }
+  .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 10px 2px 0; flex-wrap: wrap; }
+  .sync-status { font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); display: flex; align-items: center; gap: 6px; }
   .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: #C9A227; }
   .sync-dot.ok { background: var(--teal); }
+  .sync-dot.offline { background: #A8455A; }
+  .toolbar-right { display: flex; align-items: center; gap: 10px; }
+  .name-input { font-family: var(--font-mono); font-size: 11px; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 4px 8px; width: 120px; }
+  .print-btn { font-family: var(--font-mono); font-size: 11px; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 5px 10px; cursor: pointer; }
+  .print-btn:hover { background: var(--brass-soft); }
 
   .tabs { display: flex; gap: 2px; margin: 14px 0 0; background: var(--line); border-radius: var(--radius); padding: 2px; overflow-x: auto; }
   .tab { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; background: transparent; border: none; padding: 10px 16px; color: var(--ink-soft); cursor: pointer; white-space: nowrap; border-radius: var(--radius); }
@@ -64,12 +74,20 @@
   .section-hint { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-soft); margin: 0 0 16px; }
 
   .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 12px; }
-  .card-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 8px; }
+  .card.is-today { border-color: var(--brass); box-shadow: 0 0 0 1px var(--brass); }
+  .card-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .day-label-group { display: flex; align-items: center; gap: 8px; }
   .day-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brass); font-weight: 600; }
-  .day-date { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); }
+  .today-tag { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; background: var(--brass); color: var(--paper); padding: 2px 7px; border-radius: 999px; }
+  .day-date-input { font-family: var(--font-mono); font-size: 12px; color: var(--ink); background: var(--paper-dim); border: 1px solid var(--line); border-radius: var(--radius); padding: 4px 6px; }
   .field { padding: 6px 0; border-bottom: 1px dotted var(--line); font-size: 14.5px; min-height: 20px; }
   .field:last-child { border-bottom: none; }
   .field-label { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); display: block; margin-bottom: 2px; }
+  .coords-row { display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px dotted var(--line); }
+  .coords-row input { font-family: var(--font-mono); font-size: 13px; color: var(--ink); border: none; border-bottom: 1px dotted transparent; background: transparent; width: 90px; padding: 2px 0; }
+  .coords-row input:focus { outline: 1px dashed var(--brass); outline-offset: 2px; }
+  .weather-line { font-family: var(--font-mono); font-size: 12px; color: var(--teal); margin-top: 6px; }
+  .weather-line.muted { color: var(--ink-soft); font-style: italic; }
 
   .add-row { font-family: var(--font-mono); font-size: 12px; color: var(--brass); background: none; border: 1px dashed var(--brass); border-radius: var(--radius); padding: 8px 12px; cursor: pointer; width: 100%; text-align: left; margin-top: 4px; }
   .add-row:hover { background: var(--brass-soft); }
@@ -99,6 +117,19 @@
 
   .extra-note { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); background: var(--brass-soft); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 16px; }
   footer { margin-top: 40px; padding-top: 14px; border-top: 1px dashed var(--line); font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); text-align: center; }
+
+  #mapView { height: 360px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); }
+  .leaflet-popup-content { font-family: var(--font-body); font-size: 13px; }
+
+  .offline-banner { display: none; font-family: var(--font-mono); font-size: 11.5px; color: #7A3B10; background: #F3DCC0; border: 1px solid #D9A15C; border-radius: var(--radius); padding: 8px 12px; margin-top: 10px; }
+  .offline-banner.show { display: block; }
+
+  @media print {
+    .tabs, .add-row, .remove-row, .tier-add, .toolbar, #mapView, .offline-banner { display: none !important; }
+    .panel { display: block !important; margin-top: 14px; }
+    .card { break-inside: avoid; }
+    body { background: #fff; }
+  }
 </style>
 </head>
 <body>
@@ -120,10 +151,18 @@
     </div>
   </div>
 
-  <div class="sync-status"><span class="sync-dot" id="syncDot"></span><span id="syncText">Connecting…</span></div>
+  <div class="toolbar">
+    <div class="sync-status"><span class="sync-dot" id="syncDot"></span><span id="syncText">Connecting…</span></div>
+    <div class="toolbar-right">
+      <input class="name-input" id="editorName" type="text" placeholder="Editing as…" spellcheck="false">
+      <button class="print-btn" id="printBtn">Print / Save PDF</button>
+    </div>
+  </div>
+  <div class="offline-banner" id="offlineBanner">Showing last synced copy — no connection right now. Edits won't save until you're back online.</div>
 
   <nav class="tabs" role="tablist">
     <button class="tab active" data-panel="itinerary">Itinerary</button>
+    <button class="tab" data-panel="map">Map</button>
     <button class="tab" data-panel="checklists">Checklists</button>
     <button class="tab" data-panel="budget">Budget</button>
     <button class="tab" data-panel="contacts">Contacts</button>
@@ -133,9 +172,17 @@
   <div class="panel active" id="itinerary">
     <section>
       <h2>Day by day</h2>
-      <p class="section-hint">Edits sync live to anyone with this trip's link.</p>
+      <p class="section-hint">Add coordinates to a stop to see its weather forecast (shows up once you're within ~2 weeks of the date) and to plot it on the Map tab. Edits sync live to anyone with this link.</p>
       <div id="itineraryList"></div>
       <button class="add-row" id="addDay">+ Add another day</button>
+    </section>
+  </div>
+
+  <div class="panel" id="map">
+    <section>
+      <h2>Route map</h2>
+      <p class="section-hint">Plots every itinerary day that has coordinates filled in, in date order.</p>
+      <div id="mapView"></div>
     </section>
   </div>
 
@@ -143,7 +190,6 @@
     <section>
       <h2>Checklists</h2>
       <p class="section-hint">Tick as you go — checks sync live for everyone on this trip.</p>
-
       <div class="tier" data-tier="w4">
         <div class="tier-head"><div class="tier-head-left"><span class="tag">4 weeks out</span></div><button class="tier-add">+ add</button></div>
         <div class="tier-items" id="tier-w4"></div>
@@ -195,16 +241,11 @@
   <footer id="footerNote">Loading trip…</footer>
 </div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getDatabase, ref, onValue, set, push, child, get } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
-/* ============================================================
-   REPLACE WITH YOUR OWN FIREBASE CONFIG
-   (Firebase console → Project settings → General → Your apps → the </> web app)
-   These values are meant to be public — Firebase security comes from
-   the database Rules, not from hiding this object.
-   ============================================================ */
 const firebaseConfig = {
   apiKey: "AIzaSyCwmKdxRXjhGZXWdXlKx4trc9c6_OkPD7U",
   authDomain: "trip-dashboard-c6f8a.firebaseapp.com",
@@ -212,28 +253,35 @@ const firebaseConfig = {
   projectId: "trip-dashboard-c6f8a",
 };
 
+// ============================================================
+// PER-TRIP SETTINGS — the only two things a new trip file needs
+// to change (plus TRIP_SEED below) when copied from this engine.
+// ============================================================
+const TRIP_ID = 'REPLACE_ME';            // e.g. 'summer-2026' — must match the folder name
+const TRIP_LABEL = 'REPLACE ME';         // shown in the ticket stub, keep short
+const TRIP_SEED = null;                  // set to a seed object (see DEV_NOTES.md) or leave null for a blank generic starter
+
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-
-// ---- trip id lives in the URL (?trip=xxxxxx) so one deployed page can host many trips ----
-const params = new URLSearchParams(location.search);
-let tripId = params.get('trip');
-if (!tripId) {
-  tripId = Math.random().toString(36).slice(2, 8);
-  params.set('trip', tripId);
-  history.replaceState(null, '', `${location.pathname}?${params.toString()}`);
-}
-document.title = `Trip Dashboard — ${tripId}`;
-document.getElementById('tripCode').textContent = `TRIP · ${tripId}`;
-document.getElementById('footerNote').textContent =
-  `Trip code ${tripId} — share this exact URL (with ?trip=${tripId}) so it opens the same trip.`;
+const tripId = TRIP_ID;
+document.getElementById('tripCode').textContent = `TRIP · ${TRIP_LABEL}`;
+document.getElementById('footerNote').textContent = `Trip: ${tripId} — this link is dedicated to this trip; share it as-is.`;
 
 const tripRef = ref(db, `trips/${tripId}`);
+const CACHE_KEY = `trip-cache-${tripId}`;
 
-const DEFAULT_STATE = {
+const GENERIC_SEED = {
   meta: { title: '[Trip Name]', subtitle: '[Destination(s)] · [Start date] – [End date]', days: '—' },
-  itinerary: {},
-  checklists: { w4: {}, w2: {}, dayBefore: {}, onRoad: {} },
+  itineraryDays: [
+    { date: '', location: '[town / stop name]', lat: '', lon: '', plan: '[main activity, booking ref if any]', lodging: '[hotel / campsite, confirmation #]', alt: '' },
+  ],
+  checklists: {
+    w4: ['[e.g. confirm time off work]', '[e.g. book primary lodging]'],
+    w2: ['[e.g. arrange pet/house sitter]', '[e.g. verify opening hours for planned stops]'],
+    dayBefore: ['[e.g. pack, charge devices]', '[e.g. re-check weather + closures]'],
+    onRoad: ['[e.g. daily check-in with home]'],
+  },
+  contacts: [{ name: '[e.g. Roadside assistance]', ref: '[number]' }],
   budget: {
     lodging:    { label: 'Lodging',          budgeted: '', actual: '' },
     transport:  { label: 'Transport / fuel', budgeted: '', actual: '' },
@@ -241,57 +289,104 @@ const DEFAULT_STATE = {
     activities: { label: 'Activities',       budgeted: '', actual: '' },
     misc:       { label: 'Misc / buffer',    budgeted: '', actual: '' },
   },
-  contacts: {},
-  extras: {},
+  extras: [{ item: '[what needs tracking]', notes: '[details]' }],
 };
+const SEED = TRIP_SEED || GENERIC_SEED;
 
-// seed a brand-new trip id with starter content, once
+// ---- editor name (local only, for the "last edited by" tag) ----
+const nameInput = document.getElementById('editorName');
+nameInput.value = localStorage.getItem('trip-editor-name') || '';
+nameInput.addEventListener('blur', () => localStorage.setItem('trip-editor-name', nameInput.value.trim()));
+function editorName() { return localStorage.getItem('trip-editor-name')?.trim() || 'Someone'; }
+
+// ---- central write helper: every field commit goes through here so we can
+// stamp who/when without threading it through every handler individually ----
+function writeValue(path, value) {
+  set(ref(db, path), value);
+  set(ref(db, `trips/${tripId}/meta/lastEditedBy`), editorName());
+  set(ref(db, `trips/${tripId}/meta/lastEditedAt`), new Date().toISOString());
+}
+
+// ---- seed a brand-new trip id once ----
 get(tripRef).then(snap => {
   if (snap.exists()) return;
-  const seeded = JSON.parse(JSON.stringify(DEFAULT_STATE));
-  const dayKey = push(child(tripRef, 'itinerary')).key;
-  seeded.itinerary[dayKey] = { date: '[date]', location: '[town / stop name]', plan: '[main activity, booking ref if any]', lodging: '[hotel / campsite, confirmation #]', alt: '' };
-  ['w4', 'w2', 'dayBefore', 'onRoad'].forEach(t => {
-    const k = push(child(tripRef, `checklists/${t}`)).key;
-    seeded.checklists[t][k] = { text: '[new checklist item]', checked: false };
+  const seeded = {
+    meta: SEED.meta,
+    itinerary: {},
+    checklists: { w4: {}, w2: {}, dayBefore: {}, onRoad: {} },
+    budget: SEED.budget,
+    contacts: {},
+    extras: {},
+  };
+  SEED.itineraryDays.forEach(day => {
+    const key = push(child(tripRef, 'itinerary')).key;
+    seeded.itinerary[key] = day;
   });
-  const cKey = push(child(tripRef, 'contacts')).key;
-  seeded.contacts[cKey] = { name: '[e.g. Roadside assistance]', ref: '[number]' };
-  const eKey = push(child(tripRef, 'extras')).key;
-  seeded.extras[eKey] = { item: '[what needs tracking]', notes: '[details]' };
+  Object.entries(SEED.checklists).forEach(([tier, items]) => {
+    items.forEach(text => {
+      const key = push(child(tripRef, `checklists/${tier}`)).key;
+      seeded.checklists[tier][key] = { text, checked: false };
+    });
+  });
+  SEED.contacts.forEach(c => {
+    const key = push(child(tripRef, 'contacts')).key;
+    seeded.contacts[key] = c;
+  });
+  SEED.extras.forEach(x => {
+    const key = push(child(tripRef, 'extras')).key;
+    seeded.extras[key] = x;
+  });
   set(tripRef, seeded);
 });
 
+// ---- offline-first render: paint from localStorage cache immediately if present,
+// then let the live Firebase listener take over once it connects ----
+const cached = localStorage.getItem(CACHE_KEY);
+if (cached) {
+  try { renderAll(JSON.parse(cached)); } catch (e) { /* ignore bad cache */ }
+}
+const offlineTimer = setTimeout(() => {
+  if (!hasSynced) document.getElementById('offlineBanner').classList.add('show');
+}, 6000);
+
+let hasSynced = false;
 let firstSync = true;
 onValue(tripRef, snap => {
-  const data = snap.val() || DEFAULT_STATE;
+  hasSynced = true;
+  clearTimeout(offlineTimer);
+  document.getElementById('offlineBanner').classList.remove('show');
+  const data = snap.val() || {};
+  localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+  document.getElementById('syncDot').classList.remove('offline');
   document.getElementById('syncDot').classList.add('ok');
-  document.getElementById('syncText').textContent = firstSync ? 'Synced' : 'Synced · updated just now';
+  const who = data.meta?.lastEditedBy;
+  document.getElementById('syncText').textContent = firstSync
+    ? 'Synced'
+    : `Synced${who ? ' · edited by ' + who : ''} · just now`;
   firstSync = false;
-
-  renderMeta(data.meta || DEFAULT_STATE.meta);
-  renderItinerary(data.itinerary || {});
-  renderChecklists(data.checklists || {});
-  renderBudget(data.budget || DEFAULT_STATE.budget);
-  renderContacts(data.contacts || {});
-  renderExtras(data.extras || {});
+  renderAll(data);
 }, err => {
-  document.getElementById('syncText').textContent = 'Sync error — check Firebase config/rules (see console)';
+  document.getElementById('syncDot').classList.add('offline');
+  document.getElementById('syncText').textContent = 'Sync error — check console';
   console.error(err);
 });
 
-// ---------- helpers ----------
-// Skip rebuilding a section while the user is actively focused inside it,
-// so their own typing/cursor never gets yanked out from under them.
-// The section will pick up the latest merged state as soon as they click away.
+function renderAll(data) {
+  renderMeta(data.meta || {});
+  renderItinerary(data.itinerary || {});
+  renderChecklists(data.checklists || {});
+  renderBudget(data.budget || {});
+  renderContacts(data.contacts || {});
+  renderExtras(data.extras || {});
+}
+
 function focusedInside(container) {
   return container && container.contains(document.activeElement);
 }
-function commitOnBlur(el, writePath) {
-  el.addEventListener('blur', () => set(ref(db, writePath), el.textContent));
+function commitOnBlur(el, writePath, isCheckbox) {
+  el.addEventListener('blur', () => writeValue(writePath, el.textContent));
 }
 
-// ---------- META ----------
 function renderMeta(meta) {
   const titleEl = document.getElementById('title');
   const subEl = document.getElementById('subtitle');
@@ -299,43 +394,160 @@ function renderMeta(meta) {
   if (document.activeElement !== titleEl) titleEl.textContent = meta.title ?? '';
   if (document.activeElement !== subEl) subEl.textContent = meta.subtitle ?? '';
   if (document.activeElement !== daysEl) daysEl.textContent = meta.days ?? '—';
-  titleEl.onblur = () => set(ref(db, `trips/${tripId}/meta/title`), titleEl.textContent);
-  subEl.onblur = () => set(ref(db, `trips/${tripId}/meta/subtitle`), subEl.textContent);
-  daysEl.onblur = () => set(ref(db, `trips/${tripId}/meta/days`), daysEl.textContent);
+  titleEl.onblur = () => writeValue(`trips/${tripId}/meta/title`, titleEl.textContent);
+  subEl.onblur = () => writeValue(`trips/${tripId}/meta/subtitle`, subEl.textContent);
+  daysEl.onblur = () => writeValue(`trips/${tripId}/meta/days`, daysEl.textContent);
 }
 
-// ---------- ITINERARY ----------
+// ---- date / today helpers ----
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function formatDate(iso) {
+  if (!iso) return 'Add date';
+  const d = new Date(iso + 'T00:00:00');
+  if (isNaN(d)) return iso;
+  return d.toLocaleDateString('en-SG', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+// ---- weather (Open-Meteo, no API key; only returns data within ~16 days of today) ----
+const weatherCache = new Map();
+const WMO = {
+  0: '☀️ Clear', 1: '🌤️ Mostly clear', 2: '⛅ Partly cloudy', 3: '☁️ Cloudy',
+  45: '🌫️ Fog', 48: '🌫️ Fog', 51: '🌦️ Light drizzle', 53: '🌦️ Drizzle', 55: '🌧️ Heavy drizzle',
+  61: '🌦️ Light rain', 63: '🌧️ Rain', 65: '🌧️ Heavy rain', 71: '🌨️ Light snow', 73: '🌨️ Snow', 75: '❄️ Heavy snow',
+  80: '🌦️ Showers', 81: '🌧️ Showers', 82: '⛈️ Violent showers', 95: '⛈️ Thunderstorm', 96: '⛈️ Thunderstorm (hail)', 99: '⛈️ Thunderstorm (hail)',
+};
+async function fetchWeather(lat, lon, date) {
+  const key = `${lat},${lon},${date}`;
+  if (weatherCache.has(key)) return weatherCache.get(key);
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto&start_date=${date}&end_date=${date}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    const code = json?.daily?.weathercode?.[0];
+    const max = json?.daily?.temperature_2m_max?.[0];
+    const min = json?.daily?.temperature_2m_min?.[0];
+    const result = (code === undefined) ? null : { label: WMO[code] || '—', max, min };
+    weatherCache.set(key, result);
+    return result;
+  } catch (e) {
+    return null;
+  }
+}
+function attachWeather(el, lat, lon, date) {
+  if (!lat || !lon || !date) { el.textContent = ''; return; }
+  const daysOut = Math.round((new Date(date) - new Date(todayISO())) / 86400000);
+  if (daysOut < 0) { el.textContent = ''; return; }
+  if (daysOut > 15) {
+    el.textContent = 'Forecast available once within ~2 weeks of this date';
+    el.classList.add('muted');
+    return;
+  }
+  el.textContent = 'Checking forecast…';
+  el.classList.add('muted');
+  fetchWeather(lat, lon, date).then(w => {
+    if (!w) { el.textContent = 'Forecast unavailable'; return; }
+    el.classList.remove('muted');
+    el.textContent = `${w.label} · ${Math.round(w.min)}–${Math.round(w.max)}°C`;
+  });
+}
+
 function renderItinerary(itinerary) {
   const list = document.getElementById('itineraryList');
   if (focusedInside(list)) return;
   list.innerHTML = '';
-  Object.entries(itinerary).sort(([a], [b]) => (a < b ? -1 : 1)).forEach(([key, day], i) => {
+  const today = todayISO();
+  const entries = Object.entries(itinerary).sort(([ka, a], [kb, b]) => {
+    const da = a.date || '9999-99-99', db = b.date || '9999-99-99';
+    if (da !== db) return da < db ? -1 : 1;
+    return ka < kb ? -1 : 1;
+  });
+  entries.forEach(([key, day], i) => {
+    const isToday = day.date && day.date === today;
     const card = document.createElement('div');
-    card.className = 'card';
+    card.className = 'card' + (isToday ? ' is-today' : '');
     card.innerHTML = `
       <div class="card-row">
-        <span class="day-label">Day ${i + 1}</span>
-        <span class="day-date" contenteditable="true" data-f="date"></span>
+        <div class="day-label-group">
+          <span class="day-label">Stop ${i + 1}</span>
+          ${isToday ? '<span class="today-tag">Today</span>' : ''}
+        </div>
+        <input class="day-date-input" type="date" data-f="date">
       </div>
       <div class="field"><span class="field-label">Location</span><span contenteditable="true" data-f="location"></span></div>
+      <div class="coords-row">
+        <span class="field-label" style="align-self:center;margin:0;">Coords</span>
+        <input type="number" step="any" placeholder="lat" data-f="lat">
+        <input type="number" step="any" placeholder="lon" data-f="lon">
+      </div>
       <div class="field"><span class="field-label">Plan</span><span contenteditable="true" data-f="plan"></span></div>
       <div class="field"><span class="field-label">Lodging</span><span contenteditable="true" data-f="lodging"></span></div>
       <div class="field"><span class="field-label">Alternate (weather / closure)</span><span contenteditable="true" data-f="alt"></span></div>
+      <div class="weather-line" data-weather></div>
       <button class="remove-row" data-remove>− Remove this day</button>`;
-    card.querySelectorAll('[data-f]').forEach(el => {
+
+    card.querySelector('[data-f="date"]').value = day.date ?? '';
+    card.querySelector('[data-f="date"]').addEventListener('change', e => writeValue(`trips/${tripId}/itinerary/${key}/date`, e.target.value));
+    card.querySelectorAll('span[data-f]').forEach(el => {
       el.textContent = day[el.dataset.f] ?? '';
       commitOnBlur(el, `trips/${tripId}/itinerary/${key}/${el.dataset.f}`);
     });
+    card.querySelectorAll('input[type="number"][data-f]').forEach(el => {
+      el.value = day[el.dataset.f] ?? '';
+      el.addEventListener('blur', () => writeValue(`trips/${tripId}/itinerary/${key}/${el.dataset.f}`, el.value));
+    });
     card.querySelector('[data-remove]').onclick = () => set(ref(db, `trips/${tripId}/itinerary/${key}`), null);
     list.appendChild(card);
+
+    attachWeather(card.querySelector('[data-weather]'), day.lat, day.lon, day.date);
   });
+
+  renderMap(entries);
 }
 document.getElementById('addDay').onclick = () => {
   const key = push(child(tripRef, 'itinerary')).key;
-  set(ref(db, `trips/${tripId}/itinerary/${key}`), { date: '[date]', location: '', plan: '', lodging: '', alt: '' });
+  writeValue(`trips/${tripId}/itinerary/${key}`, { date: '', location: '', lat: '', lon: '', plan: '', lodging: '', alt: '' });
 };
 
-// ---------- CHECKLISTS ----------
+// ---- map ----
+let leafletMap = null;
+let markerLayer = null;
+function renderMap(sortedEntries) {
+  if (typeof L === 'undefined') return;
+  if (!leafletMap) {
+    leafletMap = L.map('mapView').setView([0, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 18,
+    }).addTo(leafletMap);
+    markerLayer = L.layerGroup().addTo(leafletMap);
+  }
+  markerLayer.clearLayers();
+  const points = [];
+  sortedEntries.forEach(([key, day], i) => {
+    const lat = parseFloat(day.lat), lon = parseFloat(day.lon);
+    if (isNaN(lat) || isNaN(lon)) return;
+    points.push([lat, lon]);
+    L.marker([lat, lon]).addTo(markerLayer)
+      .bindPopup(`<strong>Stop ${i + 1}${day.date ? ' · ' + formatDate(day.date) : ''}</strong><br>${day.location || ''}`);
+  });
+  if (points.length >= 2) {
+    L.polyline(points, { color: '#B8862F', weight: 3, opacity: 0.7 }).addTo(markerLayer);
+  }
+  if (points.length) {
+    leafletMap.fitBounds(points, { padding: [30, 30] });
+  }
+  setTimeout(() => leafletMap.invalidateSize(), 50);
+}
+document.querySelector('[data-panel="map"]');
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    if (tab.dataset.panel === 'map' && leafletMap) setTimeout(() => leafletMap.invalidateSize(), 50);
+  });
+});
+
 function renderChecklists(checklists) {
   ['w4', 'w2', 'dayBefore', 'onRoad'].forEach(tier => {
     const container = document.getElementById('tier-' + tier);
@@ -348,7 +560,7 @@ function renderChecklists(checklists) {
       row.innerHTML = `<input type="checkbox"><span contenteditable="true"></span><button class="remove-row" data-remove>✕</button>`;
       row.querySelector('input').checked = !!item.checked;
       row.querySelector('span').textContent = item.text ?? '';
-      row.querySelector('input').onchange = e => set(ref(db, `trips/${tripId}/checklists/${tier}/${key}/checked`), e.target.checked);
+      row.querySelector('input').onchange = e => writeValue(`trips/${tripId}/checklists/${tier}/${key}/checked`, e.target.checked);
       commitOnBlur(row.querySelector('span'), `trips/${tripId}/checklists/${tier}/${key}/text`);
       row.querySelector('[data-remove]').onclick = () => set(ref(db, `trips/${tripId}/checklists/${tier}/${key}`), null);
       container.appendChild(row);
@@ -359,11 +571,10 @@ document.querySelectorAll('.tier-add').forEach(btn => {
   btn.onclick = () => {
     const tier = btn.closest('.tier').dataset.tier;
     const key = push(child(tripRef, `checklists/${tier}`)).key;
-    set(ref(db, `trips/${tripId}/checklists/${tier}/${key}`), { text: '[new item]', checked: false });
+    writeValue(`trips/${tripId}/checklists/${tier}/${key}`, { text: '[new item]', checked: false });
   };
 });
 
-// ---------- BUDGET ----------
 function renderBudget(budget) {
   const body = document.getElementById('budgetBody');
   if (focusedInside(body)) return;
@@ -386,7 +597,6 @@ function renderBudget(budget) {
   body.appendChild(totalRow);
 }
 
-// ---------- CONTACTS ----------
 function renderContacts(contacts) {
   const grid = document.getElementById('contactGrid');
   if (focusedInside(grid)) return;
@@ -410,10 +620,9 @@ function renderContacts(contacts) {
 }
 document.getElementById('addContact').onclick = () => {
   const key = push(child(tripRef, 'contacts')).key;
-  set(ref(db, `trips/${tripId}/contacts/${key}`), { name: '[name]', ref: '[number / ref]' });
+  writeValue(`trips/${tripId}/contacts/${key}`, { name: '[name]', ref: '[number / ref]' });
 };
 
-// ---------- EXTRAS ----------
 function renderExtras(extras) {
   const list = document.getElementById('extrasList');
   if (focusedInside(list)) return;
@@ -435,10 +644,9 @@ function renderExtras(extras) {
 }
 document.getElementById('addExtra').onclick = () => {
   const key = push(child(tripRef, 'extras')).key;
-  set(ref(db, `trips/${tripId}/extras/${key}`), { item: '', notes: '' });
+  writeValue(`trips/${tripId}/extras/${key}`, { item: '', notes: '' });
 };
 
-// ---------- TABS ----------
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -447,6 +655,14 @@ document.querySelectorAll('.tab').forEach(tab => {
     document.getElementById(tab.dataset.panel).classList.add('active');
   });
 });
+
+document.getElementById('printBtn').onclick = () => window.print();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/trip-dashboard/sw.js').catch(() => {});
+  });
+}
 </script>
 </body>
 </html>
