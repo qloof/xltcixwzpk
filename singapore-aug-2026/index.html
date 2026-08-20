@@ -38,6 +38,12 @@
   .stub-eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--brass-soft); margin: 0 0 10px; }
   .stub-title { font-family: var(--font-display); font-weight: 600; font-size: clamp(28px, 5vw, 40px); margin: 0 0 6px; line-height: 1.05; }
   .stub-title[contenteditable]:focus, [contenteditable]:focus { outline: 1px dashed var(--brass); outline-offset: 4px; }
+  /* Brief flash right after a field's value is written (see flashSaved() in
+     the script) — the visible "yes, that was received" moment for a field
+     you just committed by pressing Enter or clicking away, since there's
+     otherwise no on-screen confirmation that the edit actually landed. */
+  [contenteditable] { transition: background-color 0.6s ease; }
+  [contenteditable].field-saved { background-color: rgba(47, 110, 99, 0.16); }
   .stub-sub { font-family: var(--font-mono); font-size: 13px; color: var(--paper-dim); opacity: 0.75; margin: 0; }
   .stub-status { display: inline-block; margin-top: 14px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 10px; border: 1px solid var(--brass); color: var(--brass-soft); border-radius: 999px; }
   .stub-ticket { border-left: 1px dashed rgba(250,249,245,0.35); padding: 28px 22px; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; text-align: right; min-width: 150px; position: relative; }
@@ -499,8 +505,34 @@ function focusedInside(container) {
   if (!container || !el || !container.contains(el)) return false;
   return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable;
 }
+// These fields are meant to hold a single line of text, but a bare
+// contenteditable span's default behavior for Enter is to insert a line
+// break, not to submit — so pressing Enter silently did nothing you could
+// see (the value only committed later, on blur, whenever that happened),
+// which read as "did my edit even register?" Enter now blurs the field
+// immediately instead, which — combined with flashSaved() below — makes
+// it behave like pressing Enter in a normal form field: it visibly commits.
+function commitOnEnter(el) {
+  el.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    el.blur();
+  });
+}
+// Brief teal flash on a field right after its value is written, so there's
+// a visible "yes, that was received" moment instead of just trusting that
+// a blur silently did something. Reuses --teal (the same color the sync
+// dot uses for "connected/ok") rather than introducing a new accent color.
+function flashSaved(el) {
+  el.classList.add('field-saved');
+  setTimeout(() => el.classList.remove('field-saved'), 500);
+}
 function commitOnBlur(el, writePath, isCheckbox) {
-  el.addEventListener('blur', () => writeValue(writePath, el.textContent));
+  commitOnEnter(el);
+  el.addEventListener('blur', () => {
+    writeValue(writePath, el.textContent);
+    flashSaved(el);
+  });
 }
 
 function renderMeta(meta) {
@@ -510,9 +542,15 @@ function renderMeta(meta) {
   if (document.activeElement !== titleEl) titleEl.textContent = meta.title ?? '';
   if (document.activeElement !== subEl) subEl.textContent = meta.subtitle ?? '';
   if (document.activeElement !== daysEl) daysEl.textContent = meta.days ?? '—';
-  titleEl.onblur = () => writeValue(`trips/${tripId}/meta/title`, titleEl.textContent);
-  subEl.onblur = () => writeValue(`trips/${tripId}/meta/subtitle`, subEl.textContent);
-  daysEl.onblur = () => writeValue(`trips/${tripId}/meta/days`, daysEl.textContent);
+  titleEl.onblur = () => { writeValue(`trips/${tripId}/meta/title`, titleEl.textContent); flashSaved(titleEl); };
+  subEl.onblur = () => { writeValue(`trips/${tripId}/meta/subtitle`, subEl.textContent); flashSaved(subEl); };
+  daysEl.onblur = () => { writeValue(`trips/${tripId}/meta/days`, daysEl.textContent); flashSaved(daysEl); };
+  // renderMeta() re-runs on every Firebase sync, and these three elements
+  // are fixed (not recreated each render) — using .onkeydown assignment
+  // rather than commitOnEnter()'s addEventListener means each render
+  // replaces the handler instead of stacking a duplicate one.
+  const commitEnterKeydown = e => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } };
+  titleEl.onkeydown = subEl.onkeydown = daysEl.onkeydown = commitEnterKeydown;
 }
 
 // ---- date / today helpers ----
@@ -734,10 +772,12 @@ function renderItinerary(itinerary) {
     // keeping the old coordinates because *some* coords already existed.
     const locEl = card.querySelector('[data-f="location"]');
     locEl.textContent = day.location ?? '';
+    commitOnEnter(locEl);
     let geocodeSeq = 0;
     locEl.addEventListener('blur', () => {
       const text = locEl.textContent.trim();
       writeValue(`trips/${tripId}/itinerary/${key}/location`, text);
+      flashSaved(locEl);
       if (!text || day.coordsManual) { showGeoFeedback(''); return; }
       // Sequence guard: if the location gets edited again before this
       // lookup returns (easy to do — this writes to Firebase and comes

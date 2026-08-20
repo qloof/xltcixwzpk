@@ -315,6 +315,25 @@ giving up per-trip URLs.
   per-field — a genuinely per-field audit trail (who changed *this exact
   field*) was considered and deliberately skipped as more complexity than
   a two-person dashboard needs.
+- **Enter commits a field; a brief flash confirms it.** Every editable
+  field is a bare `contenteditable` span/div — its native browser behavior
+  for Enter is to insert a line break, not submit, so pressing Enter after
+  typing did something invisible (the value only committed later, on
+  blur, whenever that happened) — reported as "I can't tell if my edit
+  registered." `commitOnEnter()` makes Enter blur the field immediately
+  (preventing the line-break insert), and `flashSaved()` adds a brief teal
+  background flash on any field right after its value is written — reusing
+  `--teal`, the same color the sync dot uses for "connected," rather than
+  a new accent color. Wired into `commitOnBlur()` (covers checklist items,
+  budget, contacts, extras) and individually into the itinerary location
+  field and the header title/subtitle/days fields, since those don't go
+  through `commitOnBlur()`. One thing to watch: the header fields
+  (title/subtitle/days) are NOT recreated each render like card fields
+  are, so their Enter-handling uses `.onkeydown =` (property assignment,
+  replaces on every render) rather than `commitOnEnter()`'s
+  `addEventListener` (which would silently stack a duplicate listener on
+  every Firebase sync if used there) — keep that distinction if this
+  pattern gets extended to more fixed, non-recreated elements.
 
 ## Known limitations (already communicated to the user — don't "fix" silently)
 
@@ -429,6 +448,11 @@ giving up per-trip URLs.
     (landmark lookup, not weather), test it against real example queries
     before building on it — don't assume a "geocoding" endpoint does
     general-purpose geocoding just because of its name.
+13. Added `commitOnEnter()`/`flashSaved()` (see Feature notes) — Enter now
+    commits a contenteditable field instead of inserting a line break, and
+    a brief teal flash confirms any field's value was actually written.
+    Applied everywhere fields are committed: `commitOnBlur()`, the
+    itinerary location field, and the header title/subtitle/days fields.
 
 ## Trips so far
 
