@@ -6,11 +6,12 @@
 // tripId/folder-name mismatch. This script does all of it from one seed
 // JSON file.
 //
-// It reads the LIVE engine file (repo-root index.html) as its template,
+// It reads the LIVE engine file (template/index.html) as its template,
 // rather than a separate hardcoded copy baked into this script, so a
 // scaffolded trip always matches whatever the dashboard actually looks
 // like today — if the HTML/CSS shell ever changes, this script doesn't
-// need updating to match.
+// need updating to match. It also appends the new trip to trips.json, so
+// it shows up on the landing page (repo-root index.html) automatically.
 //
 // Usage:
 //   node scripts/new-trip.mjs <slug> <label> <seed.json>
@@ -58,7 +59,7 @@ try {
 }
 const title = seed.meta?.title || label;
 
-const enginePath = path.join(repoRoot, 'index.html');
+const enginePath = path.join(repoRoot, 'template', 'index.html');
 const engineHtml = fs.readFileSync(enginePath, 'utf8');
 
 const escapedTitle = title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -105,9 +106,28 @@ const manifest = {
 };
 fs.writeFileSync(path.join(tripDir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
 
+// Landing page (repo-root index.html) reads this at runtime — see its own
+// comment for why a maintained manifest, not folder enumeration (plain
+// GitHub Pages static hosting has no directory-listing API).
+const tripsJsonPath = path.join(repoRoot, 'trips.json');
+let trips = [];
+if (fs.existsSync(tripsJsonPath)) {
+  try {
+    trips = JSON.parse(fs.readFileSync(tripsJsonPath, 'utf8'));
+  } catch (e) {
+    console.error(`Warning: couldn't parse existing trips.json (${e.message}) — leaving it untouched. Add this trip to it by hand.`);
+    trips = null;
+  }
+}
+if (trips !== null) {
+  trips.push({ slug, title, subtitle: seed.meta?.subtitle || '' });
+  fs.writeFileSync(tripsJsonPath, JSON.stringify(trips, null, 2) + '\n');
+}
+
 console.log(`Created ${tripDir}${path.sep}`);
 console.log(`  - index.html  (tripId: ${slug})`);
 console.log('  - manifest.json');
+if (trips !== null) console.log('Added to trips.json — will appear on the landing page.');
 console.log('');
 console.log('Next steps (see DEV_NOTES.md "To start a new real trip"):');
 console.log('  1. git add, commit, push from this clone.');

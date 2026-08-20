@@ -113,15 +113,25 @@ user. Access control is the DB rules above, not the key.
 
 ```
 trip-dashboard/                    (repo root)
-├── index.html                     generic "engine" copy — NOT a real trip,
-│                                   was the original proof-of-concept
-│                                   (tripId was random ?trip=xxxxxx once,
-│                                   since replaced — see History below)
+├── index.html                     the landing page — lists every trip,
+│                                   reads trips.json, no Firebase/app.js
+│                                   (see Feature notes "Landing page")
+├── trips.json                     [{slug, title, subtitle}, ...] — kept up
+│                                   to date automatically by
+│                                   scripts/new-trip.mjs
+├── template/
+│   └── index.html                  generic "engine" copy — NOT a real trip,
+│                                    the copy-source scripts/new-trip.mjs
+│                                    (and manual copying) starts from
 ├── app.js                          the shared engine — see below
 ├── manifest.json, icon.svg, sw.js  shared PWA assets (icon + service worker
 │                                   are genuinely shared across all trips;
 │                                   manifest.json is duplicated per-folder
 │                                   on purpose — see PWA notes below)
+├── .nojekyll                       tells GitHub Pages not to run Jekyll
+│                                   processing — this repo has no build
+│                                   step or Jekyll dependency (see Stack),
+│                                   this just makes that explicit/predictable
 ├── scripts/
 │   ├── new-trip.mjs                 scaffolds a new trip folder — see
 │   │                                 "To start a new real trip" below
@@ -135,7 +145,9 @@ trip-dashboard/                    (repo root)
     └── manifest.json                per-trip copy (see below)
 ```
 
-Live URL: `https://qloof.github.io/trip-dashboard/<trip-slug>/`
+Live URL for a trip: `https://qloof.github.io/trip-dashboard/<trip-slug>/`.
+Site root (`https://qloof.github.io/trip-dashboard/`) is now the landing
+page listing all trips — see History #17.
 
 ### To start a new real trip
 
@@ -149,9 +161,11 @@ Live URL: `https://qloof.github.io/trip-dashboard/<trip-slug>/`
    `<slug>` becomes both the folder name and the Firebase tripId (they must
    match), `<label>` is the short ticket-stub label. This creates
    `<slug>/index.html` and `<slug>/manifest.json` for you, reading the
-   *live* engine file (repo-root `index.html`) as its template so the
+   *live* engine file (`template/index.html`) as its template so the
    scaffolded trip always matches whatever the dashboard actually looks
-   like — see the script's own header comment.
+   like — see the script's own header comment. It also appends the new
+   trip to `trips.json`, so it shows up on the landing page automatically
+   — nothing else to do for that.
 3. `git add`, commit, push from the local clone. GitHub Pages redeploys
    automatically in ~1-2 min.
 4. Open the new URL once to trigger the seed-on-first-load (see below),
@@ -178,11 +192,11 @@ new feature had to be hand-applied to every trip file. History entries #10,
 files" as a separate, error-prone step. That's now fixed **without giving
 up per-trip URLs**: all shared logic moved into one file, `app.js` (repo
 root), which every trip's `index.html` imports as an ES module —
-`import { initTripDashboard } from '../app.js'` from a trip subfolder, or
-`'./app.js'` from the root engine file itself. Each trip's `index.html` is
-now just its HTML/CSS shell plus one `initTripDashboard({ tripId,
-tripLabel, tripSeed })` call — see `index.html` at repo root for the
-canonical shell.
+`import { initTripDashboard } from '../app.js'` from a trip subfolder (or
+from `template/index.html`, the engine copy-source — see History #17 for
+why that moved out of the repo root). Each trip's `index.html` is now just
+its HTML/CSS shell plus one `initTripDashboard({ tripId, tripLabel,
+tripSeed })` call — see `template/index.html` for the canonical shell.
 
 A few small pieces of markup/CSS added *after* this extraction (the update
 toast, the budget "Other…" currency input) are injected by `app.js` itself
@@ -522,6 +536,26 @@ since that card was already built as an HTML template string inside
   for something like VND/LAK/KHR) just means no conversion line, not an
   error — budget totals themselves are unaffected either way since they're
   plain numbers with no currency validation.
+- **Landing page (repo-root `index.html`).** The site root used to serve
+  the blank engine template — nothing pointed you at either real trip, you
+  had to already know or dig up each trip's URL. Now it's a small static
+  page (no Firebase, doesn't import `app.js`) that fetches `trips.json`
+  and renders one card per trip, linking to `./<slug>/`. `trips.json` is a
+  maintained manifest (`[{slug, title, subtitle}, ...]`), not a live
+  folder listing, because GitHub Pages is plain static hosting with no
+  directory-listing API — there's no way to ask "what folders exist" at
+  runtime. `scripts/new-trip.mjs` appends to it automatically when
+  scaffolding a new trip (see "To start a new real trip"), so this stays
+  current without a separate manual step. Reuses the established palette/
+  type tokens (navy/brass/teal, IBM Plex + Fraunces) but not the ~800-line
+  component CSS from the engine template — that's all itinerary/checklist/
+  budget UI this page doesn't have. Duplicates the 3-line service-worker
+  registration `app.js` does (rather than importing `app.js` itself, which
+  would pull in Firebase this page has no use for) so a visitor whose
+  first-ever visit is the landing page still gets offline/PWA coverage.
+  This meant the engine template could no longer live at the site root
+  (GitHub Pages always serves a directory's own `index.html`) — it moved
+  to `template/index.html`; see History #17 and the folder diagram above.
 
 ## Known limitations (already communicated to the user — don't "fix" silently)
 
@@ -685,6 +719,26 @@ since that card was already built as an HTML template string inside
     real Firebase sync, the offline queue's actual online/offline
     transition, or the new toast/reset-coords/currency-other UI by hand.
     Do that before trusting this fully; see "Still open" below.
+17. User picked "all-trips landing page" off a list of further ideas,
+    flagging that not having one URL that lists both trips had been
+    bugging them. Repurposed the site root into a landing page (see
+    Feature notes "Landing page"), which meant relocating the engine
+    template out of the root `index.html` slot (GitHub Pages always
+    serves a directory's own `index.html`) to `template/index.html`, and
+    updating `scripts/new-trip.mjs` to read from there. Also added
+    `trips.json` (a maintained manifest the landing page fetches, since
+    static hosting can't list folders) and had `new-trip.mjs` append to it
+    automatically, and added `.nojekyll` to make GitHub Pages' (previously
+    silent, inert) Jekyll processing explicitly off rather than relying on
+    undocumented Jekyll folder-naming conventions to hide `template/` from
+    publish. Verified the same way as round 16 — `node --check` on the new/
+    changed scripts, a dry run of `new-trip.mjs` confirming it reads
+    `template/index.html` and correctly appends to `trips.json` (throwaway
+    trip folder + `trips.json` entry both reverted after), a local static
+    server + `curl` confirming the landing page/`trips.json`/`template/`
+    all serve correctly, and a DOM-id cross-reference for the landing
+    page's own script. **Not verified in an actual browser**, same caveat
+    as round 16 — Claude in Chrome still wasn't connected this session.
 
 ## Trips so far
 
@@ -694,15 +748,16 @@ since that card was already built as an HTML template string inside
 
 ## Still open / natural next steps
 
-- **Live-browser verification of round 16's changes** (see History #16) —
-  open `singapore-aug-2026/` (the live test trip) on a real device/browser
-  and confirm: the page loads with no console errors, Firebase sync still
-  works, weather/map/drive-time still render, the new "reset to auto"
-  coords button and "Other…" currency input behave, and — hardest to fake
-  headlessly — the offline write queue actually queues a write while
-  devtools is set to offline, then sends it once back online. This round's
-  verification was thorough on the static/syntactic side (see History #16)
-  but nothing was exercised in a real browser against real Firebase.
+- **Live-browser verification of rounds 16 and 17's changes** (see History
+  #16, #17) — open the site root and confirm the landing page renders both
+  trip cards and links work, then open `singapore-aug-2026/` (the live
+  test trip) and confirm: the page loads with no console errors, Firebase
+  sync still works, weather/map/drive-time still render, the new "reset to
+  auto" coords button and "Other…" currency input behave, and — hardest to
+  fake headlessly — the offline write queue actually queues a write while
+  devtools is set to offline, then sends it once back online. Both rounds'
+  verification was thorough on the static/syntactic side but nothing was
+  exercised in a real browser against real Firebase.
 - Real verification pass before the Australia trip is actually real:
   confirm opening hours/closures for each stop via web search close to the
   trip date (per the standing project instruction), fill in actual
