@@ -1,0 +1,14 @@
+# OS cruft
+.DS_Store
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Editor
+.vscode/
+*.swp
+
+# Just in case any tooling gets added later
+node_modules/
+.env
+*.log
