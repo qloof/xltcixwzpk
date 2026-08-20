@@ -4,6 +4,9 @@ Thumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 
+# Stray driver logs that can get dropped into the working dir
+NVIDIA Corporation/
+
 # Editor
 .vscode/
 *.swp
