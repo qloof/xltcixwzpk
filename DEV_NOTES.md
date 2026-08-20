@@ -792,27 +792,49 @@ since that card was already built as an HTML template string inside
     Trips open by default, Past Trips closed. Same verification technique
     as the rest of this round. **Not verified in an actual browser**, same
     caveat as rounds 16-17.
+19. User asked how to remove `singapore-aug-2026/` (the live test trip,
+    now that it had served its testing purpose across several rounds).
+    Explained it's three separate pieces — the repo files, the `trips.json`
+    entry, and the live Firebase data at `/trips/singapore-aug-2026`
+    (deleting the repo files alone leaves the Firebase record orphaned,
+    since it's not stored in git) — and confirmed before touching
+    anything. Deleted all three: confirmed real (edited-since-seed) data
+    existed at that Firebase path via a REST GET, deleted it via REST
+    DELETE (DB rules already allow this — see "Database rules"), verified
+    the path now returns `null`; `git rm -r singapore-aug-2026`; removed
+    its entry from `trips.json`. Updated "Trips so far" and the
+    live-browser-verification item under "Still open" (which used to
+    specifically reference this trip for weather/countdown checks, since
+    it was the only trip with near-term dates).
 
 ## Trips so far
 
 - `australia-dec-2026/` — draft, not booked/verified (see History #4).
-- `singapore-aug-2026/` — live test trip, not a real planned trip (History
-  #9). Fine to delete/repurpose once it's served its testing purpose.
+- `singapore-aug-2026/` — deleted (see History #19). Was a deliberate live
+  test trip (History #9), not a real planned trip; served its purpose
+  across rounds 10-18 and was removed once no longer needed — repo files,
+  `trips.json` entry, and the live Firebase data under
+  `/trips/singapore-aug-2026` were all deleted. If this slug is ever
+  reused, note the Firebase data starts fresh (nothing to migrate).
 
 ## Still open / natural next steps
 
 - **Live-browser verification of rounds 16-18's changes** (see History
   #16, #17, #18) — open the site root and confirm the landing page shows
-  both trips correctly grouped under "Current Trips" (neither has ended
-  yet as of when this was written) and that links work, then open
-  `singapore-aug-2026/` (the live test trip) and confirm: the page loads
-  with no console errors, Firebase sync still works, weather/map/
-  drive-time still render, the new "reset to auto" coords button and
-  "Other…" currency input behave, and — hardest to fake headlessly — the
-  offline write queue actually queues a write while devtools is set to
-  offline, then sends it once back online. All three rounds' verification
-  was thorough on the static/syntactic side but nothing was exercised in a
-  real browser against real Firebase.
+  `australia-dec-2026` under "Current Trips" and that the link works, then
+  open `australia-dec-2026/` itself and confirm: the page loads with no
+  console errors, Firebase sync still works, weather/map/drive-time still
+  render (once within range of a dated stop), the new "reset to auto"
+  coords button and "Other…" currency input behave, and — hardest to fake
+  headlessly — the offline write queue actually queues a write while
+  devtools is set to offline, then sends it once back online. This used to
+  point at `singapore-aug-2026/` for the weather/countdown checks
+  specifically since it was the only trip with dates close enough to
+  today to actually exercise them — now that it's deleted (History #19),
+  those specific checks may need a temporary itinerary day with a near-
+  term date added to `australia-dec-2026` to exercise, then removed after.
+  All three rounds' verification was thorough on the static/syntactic side
+  but nothing was exercised in a real browser against real Firebase.
 - Real verification pass before the Australia trip is actually real:
   confirm opening hours/closures for each stop via web search close to the
   trip date (per the standing project instruction), fill in actual
