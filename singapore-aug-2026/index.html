@@ -212,6 +212,14 @@
         <div class="tier-head"><div class="tier-head-left"><span class="tag">2 weeks out</span></div><button class="tier-add">+ add</button></div>
         <div class="tier-items" id="tier-w2"></div>
       </div>
+      <div class="tier" data-tier="packingLongfen">
+        <div class="tier-head"><div class="tier-head-left"><span class="tag">Packing · Longfen</span></div><button class="tier-add">+ add</button></div>
+        <div class="tier-items" id="tier-packingLongfen"></div>
+      </div>
+      <div class="tier" data-tier="packingGwen">
+        <div class="tier-head"><div class="tier-head-left"><span class="tag">Packing · Gwen</span></div><button class="tier-add">+ add</button></div>
+        <div class="tier-items" id="tier-packingGwen"></div>
+      </div>
       <div class="tier" data-tier="dayBefore">
         <div class="tier-head"><div class="tier-head-left"><span class="tag">Day before</span></div><button class="tier-add">+ add</button></div>
         <div class="tier-items" id="tier-dayBefore"></div>
@@ -317,8 +325,22 @@ const TRIP_SEED = {
       'Check the weather forecast for the week',
       'Charge power bank, download offline maps for Sentosa/Chinatown',
     ],
+    packingLongfen: [
+      'Sunscreen',
+      'Comfortable walking shoes',
+      'EZ-Link card (topped up)',
+      'Phone charger / power bank',
+      'Swimwear (Sentosa)',
+    ],
+    packingGwen: [
+      'Sunscreen',
+      'Comfortable walking shoes',
+      'EZ-Link card (topped up)',
+      'Phone charger / power bank',
+      'Swimwear (Sentosa)',
+    ],
     dayBefore: [
-      'Charge devices, pack sunscreen + comfortable shoes',
+      'Charge devices',
       'Re-check Sentosa cable car operating hours',
     ],
     onRoad: [
@@ -359,7 +381,9 @@ const GENERIC_SEED = {
   checklists: {
     w4: ['[e.g. confirm time off work]', '[e.g. book primary lodging]'],
     w2: ['[e.g. arrange pet/house sitter]', '[e.g. verify opening hours for planned stops]'],
-    dayBefore: ['[e.g. pack, charge devices]', '[e.g. re-check weather + closures]'],
+    packingLongfen: ['[e.g. passport / ID]', '[e.g. chargers + adapter]', '[e.g. weather-appropriate clothing]'],
+    packingGwen: ['[e.g. passport / ID]', '[e.g. chargers + adapter]', '[e.g. weather-appropriate clothing]'],
+    dayBefore: ['[e.g. charge devices]', '[e.g. re-check weather + closures]'],
     onRoad: ['[e.g. daily check-in with home]'],
   },
   contacts: [{ name: '[e.g. Roadside assistance]', ref: '[number]' }],
@@ -394,7 +418,7 @@ get(tripRef).then(snap => {
   const seeded = {
     meta: SEED.meta,
     itinerary: {},
-    checklists: { w4: {}, w2: {}, dayBefore: {}, onRoad: {} },
+    checklists: { w4: {}, w2: {}, packingLongfen: {}, packingGwen: {}, dayBefore: {}, onRoad: {} },
     budget: SEED.budget,
     contacts: {},
     extras: {},
@@ -791,7 +815,7 @@ document.querySelectorAll('.tab').forEach(tab => {
 });
 
 function renderChecklists(checklists) {
-  ['w4', 'w2', 'dayBefore', 'onRoad'].forEach(tier => {
+  ['w4', 'w2', 'packingLongfen', 'packingGwen', 'dayBefore', 'onRoad'].forEach(tier => {
     const container = document.getElementById('tier-' + tier);
     if (focusedInside(container)) return;
     container.innerHTML = '';

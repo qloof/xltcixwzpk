@@ -65,7 +65,7 @@ restyle from scratch on future changes.
                 manually re-editing lat/lon back to blank; see Known
                 limitations.
     plan, lodging, alt   free text
-  checklists/{w4|w2|dayBefore|onRoad}/{pushKey}/
+  checklists/{w4|w2|packingLongfen|packingGwen|dayBefore|onRoad}/{pushKey}/
     text, checked
   budget/{lodging|transport|food|activities|misc}/
     label (fixed), budgeted, actual   — total row is computed client-side,
@@ -264,6 +264,19 @@ giving up per-trip URLs.
   Backed by a per-day `order` number (see Data model) that's lazily
   "repaired" to clean sequential values the first time you reorder a given
   group, so pre-existing cards with no `order` field don't need migrating.
+- **Two packing lists.** Longfen and Gwen each get their own checklist tier
+  (`packingLongfen`, `packingGwen`) under the Checklists tab, between "2
+  weeks out" and "Day before" — same UI/interaction as every other tier
+  (checkbox + editable text + remove), nothing new to build. Considered and
+  rejected: a single shared packing list, and a brand-new top-level tab.
+  A shared list doesn't work because packing needs are genuinely different
+  per person; a new tab was rejected because this is structurally identical
+  to what Checklists already does, and the tab bar is already six items
+  wide on a phone screen — a packing list doesn't need its own top-level
+  nav destination. Names are hardcoded into the engine template (not a
+  generic placeholder like "[Person 1]") because this app is built for
+  exactly these two people, not for resale/generalization — see the
+  project's own description.
 - **"Last edited by."** A small text input in the toolbar, stored in
   `localStorage` only (`trip-editor-name`) — not per-user auth, just a
   courtesy label. Every field write goes through a central `writeValue()`
@@ -370,6 +383,10 @@ giving up per-trip URLs.
     files (engine, Australia, Singapore) — this one couldn't wait for the
     next "propagate to trip files" pass since it broke a feature on a trip
     already in someone's hands.
+11. Added per-person packing lists (`packingLongfen`/`packingGwen` tiers
+    under Checklists — see Feature notes). Propagated to all three files
+    (engine, Australia, Singapore) with real starter items for the two
+    live trips, not placeholders.
 
 ## Trips so far
 

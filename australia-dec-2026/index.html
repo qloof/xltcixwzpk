@@ -212,6 +212,14 @@
         <div class="tier-head"><div class="tier-head-left"><span class="tag">2 weeks out</span></div><button class="tier-add">+ add</button></div>
         <div class="tier-items" id="tier-w2"></div>
       </div>
+      <div class="tier" data-tier="packingLongfen">
+        <div class="tier-head"><div class="tier-head-left"><span class="tag">Packing · Longfen</span></div><button class="tier-add">+ add</button></div>
+        <div class="tier-items" id="tier-packingLongfen"></div>
+      </div>
+      <div class="tier" data-tier="packingGwen">
+        <div class="tier-head"><div class="tier-head-left"><span class="tag">Packing · Gwen</span></div><button class="tier-add">+ add</button></div>
+        <div class="tier-items" id="tier-packingGwen"></div>
+      </div>
       <div class="tier" data-tier="dayBefore">
         <div class="tier-head"><div class="tier-head-left"><span class="tag">Day before</span></div><button class="tier-add">+ add</button></div>
         <div class="tier-items" id="tier-dayBefore"></div>
@@ -297,8 +305,23 @@ const TRIP_SEED = {
       'Sort travel insurance',
       'Check December public holiday closures for planned stops',
     ],
+    packingLongfen: [
+      'Passport (6+ months validity) + ETA/eVisitor confirmation',
+      'Sunscreen, hat, sunglasses — AU summer, UV is strong',
+      'Light layers — can be cool at night in the Blue Mountains',
+      'Phone charger + AU power adapter (Type I, different from SG)',
+      'Swimwear (Great Ocean Road, Phillip Island)',
+      'Comfortable walking shoes',
+    ],
+    packingGwen: [
+      'Passport (6+ months validity) + ETA/eVisitor confirmation',
+      'Sunscreen, hat, sunglasses — AU summer, UV is strong',
+      'Light layers — can be cool at night in the Blue Mountains',
+      'Phone charger + AU power adapter (Type I, different from SG)',
+      'Swimwear (Great Ocean Road, Phillip Island)',
+      'Comfortable walking shoes',
+    ],
     dayBefore: [
-      'Pack for AU summer — sun protection, hat, light layers',
       'Check weather forecast: Sydney, Melbourne, Great Ocean Road',
       'Download offline maps, charge devices',
     ],
@@ -352,7 +375,7 @@ get(tripRef).then(snap => {
   const seeded = {
     meta: SEED.meta,
     itinerary: {},
-    checklists: { w4: {}, w2: {}, dayBefore: {}, onRoad: {} },
+    checklists: { w4: {}, w2: {}, packingLongfen: {}, packingGwen: {}, dayBefore: {}, onRoad: {} },
     budget: SEED.budget,
     contacts: {},
     extras: {},
@@ -739,7 +762,7 @@ document.querySelectorAll('.tab').forEach(tab => {
 });
 
 function renderChecklists(checklists) {
-  ['w4', 'w2', 'dayBefore', 'onRoad'].forEach(tier => {
+  ['w4', 'w2', 'packingLongfen', 'packingGwen', 'dayBefore', 'onRoad'].forEach(tier => {
     const container = document.getElementById('tier-' + tier);
     if (focusedInside(container)) return;
     container.innerHTML = '';
