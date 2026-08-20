@@ -75,7 +75,7 @@
 
   .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 12px; }
   .card.is-today { border-color: var(--brass); box-shadow: 0 0 0 1px var(--brass); }
-  .card-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .card-row { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-bottom: 8px; }
   .day-label-group { display: flex; align-items: center; gap: 8px; }
   .day-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brass); font-weight: 600; }
   .today-tag { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; background: var(--brass); color: var(--paper); padding: 2px 7px; border-radius: 999px; }
@@ -83,7 +83,12 @@
   .field { padding: 6px 0; border-bottom: 1px dotted var(--line); font-size: 14.5px; min-height: 20px; }
   .field:last-child { border-bottom: none; }
   .field-label { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); display: block; margin-bottom: 2px; }
+  .card-links { display: flex; align-items: center; gap: 14px; padding: 6px 0; flex-wrap: wrap; }
+  .coords-toggle { font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); background: none; border: none; cursor: pointer; padding: 0; text-decoration: underline dotted; }
+  .nav-link { font-family: var(--font-mono); font-size: 11px; color: var(--teal); text-decoration: none; font-weight: 600; }
+  .nav-link:hover { text-decoration: underline; }
   .coords-row { display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px dotted var(--line); }
+  .coords-row.hidden { display: none; }
   .coords-row input { font-family: var(--font-mono); font-size: 13px; color: var(--ink); border: none; border-bottom: 1px dotted transparent; background: transparent; width: 90px; padding: 2px 0; }
   .coords-row input:focus { outline: 1px dashed var(--brass); outline-offset: 2px; }
   .weather-line { font-family: var(--font-mono); font-size: 12px; color: var(--teal); margin-top: 6px; }
@@ -475,6 +480,19 @@ function attachWeather(el, lat, lon, date) {
   });
 }
 
+async function geocodeLocation(query) {
+  try {
+    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=en&format=json`;
+    const res = await fetch(url);
+    const json = await res.json();
+    const r = json?.results?.[0];
+    if (!r) return null;
+    return { lat: r.latitude, lon: r.longitude };
+  } catch (e) {
+    return null;
+  }
+}
+
 function renderItinerary(itinerary) {
   const list = document.getElementById('itineraryList');
   if (focusedInside(list)) return;
@@ -498,7 +516,11 @@ function renderItinerary(itinerary) {
         <input class="day-date-input" type="date" data-f="date">
       </div>
       <div class="field"><span class="field-label">Location</span><span contenteditable="true" data-f="location"></span></div>
-      <div class="coords-row">
+      <div class="card-links">
+        <button class="coords-toggle" type="button" data-toggle-coords>± coordinates</button>
+        <a class="nav-link" data-waze target="_blank" rel="noopener" style="display:none;">Navigate in Waze →</a>
+      </div>
+      <div class="coords-row hidden">
         <span class="field-label" style="align-self:center;margin:0;">Coords</span>
         <input type="number" step="any" placeholder="lat" data-f="lat">
         <input type="number" step="any" placeholder="lon" data-f="lon">
@@ -509,19 +531,54 @@ function renderItinerary(itinerary) {
       <div class="weather-line" data-weather></div>
       <button class="remove-row" data-remove>− Remove this day</button>`;
 
+    const latInput = card.querySelector('[data-f="lat"]');
+    const lonInput = card.querySelector('[data-f="lon"]');
+    const wazeLink = card.querySelector('[data-waze]');
+    function updateWazeLink() {
+      const lat = latInput.value, lon = lonInput.value;
+      if (lat && lon) {
+        wazeLink.href = `https://waze.com/ul?ll=${lat},${lon}&navigate=yes`;
+        wazeLink.style.display = '';
+      } else {
+        wazeLink.style.display = 'none';
+      }
+    }
+
     card.querySelector('[data-f="date"]').value = day.date ?? '';
     card.querySelector('[data-f="date"]').addEventListener('change', e => writeValue(`trips/${tripId}/itinerary/${key}/date`, e.target.value));
-    card.querySelectorAll('span[data-f]').forEach(el => {
+
+    const locEl = card.querySelector('[data-f="location"]');
+    locEl.textContent = day.location ?? '';
+    locEl.addEventListener('blur', () => {
+      const text = locEl.textContent.trim();
+      writeValue(`trips/${tripId}/itinerary/${key}/location`, text);
+      const hasCoords = latInput.value !== '' && lonInput.value !== '';
+      if (text && !hasCoords) {
+        geocodeLocation(text).then(geo => {
+          if (!geo) return;
+          latInput.value = geo.lat;
+          lonInput.value = geo.lon;
+          updateWazeLink();
+          writeValue(`trips/${tripId}/itinerary/${key}/lat`, geo.lat);
+          writeValue(`trips/${tripId}/itinerary/${key}/lon`, geo.lon);
+          attachWeather(card.querySelector('[data-weather]'), geo.lat, geo.lon, day.date);
+        });
+      }
+    });
+
+    card.querySelectorAll('span[data-f]:not([data-f="location"])').forEach(el => {
       el.textContent = day[el.dataset.f] ?? '';
       commitOnBlur(el, `trips/${tripId}/itinerary/${key}/${el.dataset.f}`);
     });
     card.querySelectorAll('input[type="number"][data-f]').forEach(el => {
       el.value = day[el.dataset.f] ?? '';
-      el.addEventListener('blur', () => writeValue(`trips/${tripId}/itinerary/${key}/${el.dataset.f}`, el.value));
+      el.addEventListener('blur', () => { writeValue(`trips/${tripId}/itinerary/${key}/${el.dataset.f}`, el.value); updateWazeLink(); });
     });
+    card.querySelector('[data-toggle-coords]').onclick = () => card.querySelector('.coords-row').classList.toggle('hidden');
     card.querySelector('[data-remove]').onclick = () => set(ref(db, `trips/${tripId}/itinerary/${key}`), null);
     list.appendChild(card);
 
+    updateWazeLink();
     attachWeather(card.querySelector('[data-weather]'), day.lat, day.lon, day.date);
   });
 

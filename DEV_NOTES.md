@@ -263,3 +263,33 @@ giving up per-trip URLs.
   painful to maintain (see "Why duplicated" above).
 - Offline write queueing, if spotty signal on an actual drive turns out to
   be a real problem in practice rather than a theoretical one.
+
+## Round 3: itinerary card UX (geocoding, Waze, layout)
+
+- **Day above Date.** `.card-row` changed from a horizontal flex row to a
+  stacked column — the "Stop N" label (+ Today tag) now sits above the
+  date input rather than beside it. Pure CSS change, no data model impact.
+- **Coordinates are hidden by default now, and mostly auto-filled.**
+  Raw lat/lon inputs used to always show on every itinerary card — the
+  user asked whether that was necessary, and it wasn't: humans don't need
+  to see decimal coordinates day-to-day, they're just plumbing for
+  weather/map/navigation. Two changes:
+  1. The coords row is now hidden behind a small "± coordinates" toggle
+     button per card (manual override still fully available, just not
+     shown by default).
+  2. When the `location` text field is edited and lat/lon are still empty,
+     `geocodeLocation()` (Open-Meteo's free geocoding API, no key) resolves
+     the typed place name to coordinates automatically in the background
+     and writes them silently. If the auto-match is wrong (ambiguous place
+     names — "Sydney" could resolve outside Australia, etc.), open the
+     toggle and correct the lat/lon by hand; it won't be overwritten again
+     once non-empty. Geocoding only fires when lat/lon are both blank, so
+     it never fights a manual correction.
+- **Waze handoff.** Each card has a "Navigate in Waze →" link
+  (`https://waze.com/ul?ll={lat},{lon}&navigate=yes`, Waze's universal
+  link format — opens the Waze app if installed, falls back to
+  web/store otherwise) that only appears once lat/lon are present
+  (auto-geocoded or manual). This was the actual justification for keeping
+  coordinates in the data model at all rather than dropping them — they
+  now power three features (weather, map, one-tap Waze navigation), not
+  just one.
