@@ -626,12 +626,20 @@ giving up per-trip URLs.
   painful to maintain (see "Why duplicated" above).
 - Offline write queueing, if spotty signal on an actual drive turns out to
   be a real problem in practice rather than a theoretical one.
-- One-time cleanup: set `budgetCurrency: 'AUD'` on the already-seeded
-  Australia trip's Firebase data (won't happen automatically — existing
-  trips aren't re-seeded from an updated `TRIP_SEED`, see Data model).
-  Singapore is fine left at the default (already SGD).
 - No UI yet to un-share / revoke a share link — the QR/share panel just
   surfaces the existing (unauthed) URL, it doesn't add any new access
   control. Consistent with the existing "anyone with the link" trust
   model (see Known limitations), just making the link easier to hand
   someone.
+- Australia itinerary has a real content gap: dated stops exist for
+  Dec 8–13, then nothing at all until a single Dec 21 departure entry —
+  Dec 14–20 (7 days) has no itinerary data. Needs either real stops added
+  or the trip's actual plan for that stretch confirmed with the user.
+- The Australia week-4 checklist includes "Apply for Australia ETA /
+  eVisitor visa" — written as a plausible starter item, not verified
+  against current Australian visa requirements for a Singapore passport.
+  Confirm the correct visa product via a real search before the user
+  relies on it (visa rules/names do change).
+- Budget currency dropdown is a closed list of 14 currencies with no
+  free-text fallback (see Feature notes) — revisit if a real trip needs
+  a currency not on the list (flagged, not yet actioned).
