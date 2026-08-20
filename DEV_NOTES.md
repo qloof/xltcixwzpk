@@ -52,6 +52,10 @@ restyle from scratch on future changes.
                 fine; UI degrades gracefully (no weather line, no map pin).
                 Auto-filled by geocoding the `location` text (see Feature
                 notes) unless coordsManual is true.
+    order       number, default 0. Manual tiebreaker within a date group
+                (see "Manual reordering" in Feature notes) — only meaningful
+                among itinerary days sharing the same date (or all having
+                no date yet). Never overrides date-based ordering.
     coordsManual  boolean, default false. True once a human has manually
                 typed into the lat/lon fields (via the "± coordinates"
                 toggle). While false, every edit to `location` re-geocodes
@@ -181,13 +185,32 @@ giving up per-trip URLs.
   hosts at all). Once we moved to real GitHub Pages hosting, both
   restrictions went away; this is why weather/map/offline-cache weren't
   built until this round.
-- **PWA / "Add to Home Screen".** `manifest.json` + `sw.js`. The service
-  worker only caches static shell assets (currently just the icon) and
-  passes through everything else (Firebase, fonts, Leaflet, weather API) to
-  the network — it deliberately does NOT cache Firebase responses, so it
-  can never serve stale trip data as if it were live. `sw.js` is registered
-  from an **absolute** path (`/trip-dashboard/sw.js`) so its scope covers
-  every trip subfolder from one shared file.
+- **PWA / "Add to Home Screen".** `manifest.json` + `sw.js`. It deliberately
+  does NOT cache Firebase responses, so it can never serve stale trip data
+  as if it were live. `sw.js` is registered from an **absolute** path
+  (`/trip-dashboard/sw.js`) so its scope covers every trip subfolder from
+  one shared file.
+  **v2 correction (this round):** the original description here said the
+  service worker "only caches static shell assets (currently just the
+  icon)" — that was wrong, and it caused a real bug, not just a docs typo.
+  The `fetch` handler intercepted *every* same-origin GET, including
+  `index.html` itself, and served the cached copy first (refreshing the
+  cache in the background for *next* time) — a stale-while-revalidate
+  pattern. That's fine for an asset that never changes, but the dashboard's
+  own HTML/JS changes on every code deploy, so this meant every fix pushed
+  to this repo needed an *extra silent reload* on a phone that had visited
+  before, before it actually showed up — indistinguishable from "the fix
+  didn't work." This is exactly what happened after the Waze/geocode fix
+  earlier this session: the fix was correctly deployed, but the user's
+  phone kept serving the stale pre-fix JS. Fixed by making the app's own
+  HTML/manifest **network-first** (always try the network, only fall back
+  to cache if the network request fails outright) while leaving genuinely
+  static assets (the icon) cache-first. Cache name bumped to
+  `trip-dashboard-shell-v2` so the old stale-cached entries get purged on
+  activate. **If this ever recurs** (a deployed fix "isn't showing up"),
+  suspect the service worker cache before suspecting the code — have the
+  user do a hard refresh, or clear site data for the page, or uninstall/
+  reinstall if it's been added to the home screen.
   `manifest.json` is duplicated per-trip-folder rather than shared, because
   a shared manifest's `start_url` resolves relative to the manifest's own
   location, not the page that links it — a shared root manifest would make
@@ -226,6 +249,21 @@ giving up per-trip URLs.
   currently non-empty": location edits always re-geocode *unless* the human
   has manually typed into lat/lon themselves, in which case their manual
   pin is trusted and left alone.
+- **Manual reordering (▲/▼).** Full drag-and-drop was considered and
+  rejected: this is a phone-first app and native HTML5 drag doesn't work
+  reliably on touch without an extra library, and — more fundamentally —
+  itinerary order is driven by `date`, not by list position (see the sort
+  comment at the top of `renderItinerary()`). Dragging a card to a
+  different date's position wouldn't stick; the next render would snap it
+  back to date order, which would look broken. What people actually need
+  manual control over is the *sub-order within a date* (or among days that
+  don't have a date yet) — e.g. two draft stops with no date, or two stops
+  planned for the same day. The ▲/▼ buttons only swap within that group;
+  they're disabled (greyed out, unclickable) when there's no same-group
+  neighbor to swap with, so you never click one and see nothing happen.
+  Backed by a per-day `order` number (see Data model) that's lazily
+  "repaired" to clean sequential values the first time you reorder a given
+  group, so pre-existing cards with no `order` field don't need migrating.
 - **"Last edited by."** A small text input in the toolbar, stored in
   `localStorage` only (`trip-editor-name`) — not per-user auth, just a
   courtesy label. Every field write goes through a central `writeValue()`
@@ -297,6 +335,13 @@ giving up per-trip URLs.
    an explicit `coordsManual` flag instead). Both changes were made in the
    engine template first, then propagated to `australia-dec-2026/index.html`
    the same way as always.
+8. This round: added manual ▲/▼ reordering within a date group (see Feature
+   notes — full drag was rejected, not just deferred, for reasons explained
+   there). Also found and fixed a real bug in `sw.js`: it was serving stale
+   cached HTML/JS on every load instead of the freshly-deployed code, which
+   is why the user saw the round-7 Waze fix appear not to work even though
+   it had deployed correctly — see the "v2 correction" note under PWA in
+   Feature notes for the full story.
 
 ## Still open / natural next steps
 

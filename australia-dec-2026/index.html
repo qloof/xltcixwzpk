@@ -79,6 +79,10 @@
   .day-label-group { display: flex; align-items: center; gap: 8px; }
   .day-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brass); font-weight: 600; }
   .today-tag { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; background: var(--brass); color: var(--paper); padding: 2px 7px; border-radius: 999px; }
+  .move-btns { display: flex; gap: 3px; margin-left: 4px; }
+  .move-btn { font-family: var(--font-mono); font-size: 10px; color: var(--ink-soft); background: none; border: 1px solid var(--line); border-radius: var(--radius); cursor: pointer; padding: 1px 6px; line-height: 1.5; }
+  .move-btn:hover:not(:disabled) { background: var(--paper-dim); color: var(--ink); border-color: var(--brass); }
+  .move-btn:disabled { opacity: 0.25; cursor: default; }
   .date-display { margin: 2px 0; }
   .date-weekday { font-family: var(--font-mono); font-weight: 700; font-size: 14px; color: var(--ink); text-transform: uppercase; letter-spacing: 0.04em; }
   .date-numeric { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-soft); margin-top: 1px; }
@@ -517,11 +521,40 @@ function renderItinerary(itinerary) {
   if (focusedInside(list)) return;
   list.innerHTML = '';
   const today = todayISO();
+  // Sort by date first (this is what drives "today" highlighting, weather
+  // lookups, and the overall trip narrative — it stays authoritative and
+  // is never overridden by manual reordering). Within the same date (or
+  // among days that don't have a date yet), `order` breaks the tie so the
+  // ▲/▼ buttons below have something to actually move; entries that have
+  // never been manually reordered fall back to creation order (push key),
+  // same as before this feature existed.
   const entries = Object.entries(itinerary).sort(([ka, a], [kb, b]) => {
     const da = a.date || '9999-99-99', db = b.date || '9999-99-99';
     if (da !== db) return da < db ? -1 : 1;
+    const oa = a.order ?? 0, ob = b.order ?? 0;
+    if (oa !== ob) return oa < ob ? -1 : 1;
     return ka < kb ? -1 : 1;
   });
+  // Reorders `key` within its date group (only meaningful within the group —
+  // see the sort comment above for why dates always win across groups).
+  // Repairs the whole group to clean sequential order values first (so
+  // legacy cards with no `order` field yet get one), then swaps the two
+  // positions being moved.
+  function reorderWithinDateGroup(key, direction) {
+    const idx = entries.findIndex(([k]) => k === key);
+    if (idx === -1) return;
+    const groupDate = entries[idx][1].date || '';
+    let start = idx, end = idx;
+    while (start > 0 && (entries[start - 1][1].date || '') === groupDate) start--;
+    while (end < entries.length - 1 && (entries[end + 1][1].date || '') === groupDate) end++;
+    const group = entries.slice(start, end + 1);
+    const posInGroup = idx - start;
+    const targetPos = posInGroup + direction;
+    if (targetPos < 0 || targetPos >= group.length) return;
+    const orders = group.map((_, i) => i * 10);
+    [orders[posInGroup], orders[targetPos]] = [orders[targetPos], orders[posInGroup]];
+    group.forEach(([k], i) => writeValue(`trips/${tripId}/itinerary/${k}/order`, orders[i]));
+  }
   entries.forEach(([key, day], i) => {
     const isToday = day.date && day.date === today;
     const card = document.createElement('div');
@@ -531,6 +564,10 @@ function renderItinerary(itinerary) {
         <div class="day-label-group">
           <span class="day-label">Stop ${i + 1}</span>
           ${isToday ? '<span class="today-tag">Today</span>' : ''}
+          <span class="move-btns">
+            <button class="move-btn" type="button" data-move-up title="Move up (same date)">▲</button>
+            <button class="move-btn" type="button" data-move-down title="Move down (same date)">▼</button>
+          </span>
         </div>
         <div class="date-display">
           <div class="date-weekday" data-weekday></div>
@@ -631,6 +668,17 @@ function renderItinerary(itinerary) {
     });
     card.querySelector('[data-toggle-coords]').onclick = () => card.querySelector('.coords-row').classList.toggle('hidden');
     card.querySelector('[data-remove]').onclick = () => set(ref(db, `trips/${tripId}/itinerary/${key}`), null);
+
+    const groupDate = day.date || '';
+    const isFirstInGroup = i === 0 || (entries[i - 1][1].date || '') !== groupDate;
+    const isLastInGroup = i === entries.length - 1 || (entries[i + 1][1].date || '') !== groupDate;
+    const upBtn = card.querySelector('[data-move-up]');
+    const downBtn = card.querySelector('[data-move-down]');
+    upBtn.disabled = isFirstInGroup;
+    downBtn.disabled = isLastInGroup;
+    upBtn.onclick = () => reorderWithinDateGroup(key, -1);
+    downBtn.onclick = () => reorderWithinDateGroup(key, +1);
+
     list.appendChild(card);
 
     updateWazeLink();
@@ -641,7 +689,7 @@ function renderItinerary(itinerary) {
 }
 document.getElementById('addDay').onclick = () => {
   const key = push(child(tripRef, 'itinerary')).key;
-  writeValue(`trips/${tripId}/itinerary/${key}`, { date: '', location: '', lat: '', lon: '', plan: '', lodging: '', alt: '', coordsManual: false });
+  writeValue(`trips/${tripId}/itinerary/${key}`, { date: '', location: '', lat: '', lon: '', plan: '', lodging: '', alt: '', coordsManual: false, order: 0 });
 };
 
 let leafletMap = null;

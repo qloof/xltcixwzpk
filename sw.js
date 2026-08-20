@@ -1,8 +1,16 @@
-// Minimal offline app-shell cache. Only caches static assets (the page
-// shell, icon), never Firebase data — live trip data always comes from
-// the network when online, and falls back to the localStorage copy
-// (written in index.html on every sync) when it can't.
-const CACHE = 'trip-dashboard-shell-v1';
+// Minimal offline app-shell cache. Never caches Firebase data — live trip
+// data always comes from the network when online, and falls back to the
+// localStorage copy (written in index.html on every sync) when it can't.
+//
+// v2: the dashboard's own HTML/manifest are now NETWORK-FIRST, not
+// cache-first. v1 served a stale cached copy of index.html on every load
+// and only refreshed the cache in the background for *next* time — which
+// meant every code deploy needed an extra silent reload cycle before it
+// actually showed up on a phone that had visited before. That's a real bug
+// (see DEV_NOTES.md), not just a rare edge case, since this app gets
+// updated in place fairly often. Only genuinely static assets (the icon)
+// stay cache-first, since those don't change.
+const CACHE = 'trip-dashboard-shell-v2';
 
 self.addEventListener('install', event => {
   self.skipWaiting();
@@ -23,15 +31,34 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
-  if (event.request.method !== 'GET' || url.origin !== self.location.origin) return;
+  const req = event.request;
+  const url = new URL(req.url);
+  if (req.method !== 'GET' || url.origin !== self.location.origin) return;
 
+  const isAppShellDoc = req.mode === 'navigate'
+    || url.pathname.endsWith('.html')
+    || url.pathname.endsWith('/')
+    || url.pathname.endsWith('manifest.json');
+
+  if (isAppShellDoc) {
+    // Network-first: always try to get the latest code/manifest when
+    // online. Only fall back to whatever's cached if the network request
+    // fails outright (offline, DNS down, etc.) — matching the "offline
+    // resilience" feature's actual intent.
+    event.respondWith(
+      fetch(req).then(response => {
+        if (response.ok) caches.open(CACHE).then(cache => cache.put(req, response.clone()));
+        return response;
+      }).catch(() => caches.match(req))
+    );
+    return;
+  }
+
+  // Static assets (icon, etc.) — cache-first, refresh in background.
   event.respondWith(
-    caches.match(event.request).then(cached => {
-      const fetchPromise = fetch(event.request).then(response => {
-        if (response.ok) {
-          caches.open(CACHE).then(cache => cache.put(event.request, response.clone()));
-        }
+    caches.match(req).then(cached => {
+      const fetchPromise = fetch(req).then(response => {
+        if (response.ok) caches.open(CACHE).then(cache => cache.put(req, response.clone()));
         return response;
       }).catch(() => cached);
       return cached || fetchPromise;
