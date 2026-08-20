@@ -70,6 +70,16 @@ restyle from scratch on future changes.
   budget/{lodging|transport|food|activities|misc}/
     label (fixed), budgeted, actual   — total row is computed client-side,
     never stored.
+  budgetCurrency  string, e.g. 'SGD', 'AUD'. What currency the budget
+                figures above are entered in. Defaults to 'SGD' (the
+                app's HOME_CURRENCY) if absent — this matters for
+                existing trips seeded before this field existed, since
+                they're never re-seeded from an updated TRIP_SEED (see
+                "To start a new real trip" below); a trip whose actual
+                spending currency isn't SGD needs this field set once,
+                by hand, via a Firebase REST write or by picking it from
+                the dropdown in the Budget panel (which writes it back
+                immediately).
   contacts/{pushKey}/  { name, ref }
   extras/{pushKey}/    { item, notes }
 ```
@@ -334,6 +344,88 @@ giving up per-trip URLs.
   `addEventListener` (which would silently stack a duplicate listener on
   every Firebase sync if used there) — keep that distinction if this
   pattern gets extended to more fixed, non-recreated elements.
+- **Drive time between stops** (OSRM, `router.project-osrm.org`, no API
+  key). Each itinerary card shows walking-you-through-it drive time/
+  distance to the *next* card in date order (🚗 "1h 12m · 58 km to
+  Sentosa Island"), computed from both cards' lat/lon. Blank if either
+  stop is missing coordinates, or if it's the last stop. Results are
+  cached in-memory per lat/lon pair (`routeCache`) since the same
+  consecutive-stop pair recomputes on every render otherwise. **Explicitly
+  a non-production instance**: OSRM's own docs describe
+  `router.project-osrm.org` as a demo/evaluation server, not something to
+  build a real product on — no uptime guarantee, no key, shared rate
+  limits. Accepted here because usage is low (a handful of cached lookups
+  per page view) and occasional — revisit (self-hosted OSRM, or a
+  commercial routing API) if this ever needs to be reliable for more than
+  a two-person trip dashboard.
+- **Trip countdown / status badge.** The toolbar's "Status:" badge
+  (`#stubStatus`) used to be static text ("Status: Planning"). Now
+  computed live from the itinerary's actual date range vs. today:
+  "T-minus N days" before the trip starts, "Day N of M · In progress"
+  during it, "Trip complete" after the last day, and back to the original
+  "Status: Planning" text if the itinerary has no dated days yet. Pure
+  client-side date math (`updateTripStatus()`), no API involved.
+- **QR code + share link.** A "Share" button in the toolbar toggles a
+  panel showing a QR code and the page's own URL (stripped of query
+  string/hash) plus a "Copy link" button using
+  `navigator.clipboard.writeText`. QR rendering uses the
+  `qrcode-generator` library (Kazuhiko Arase, MIT license), loaded as a
+  classic script tag from `unpkg.com/qrcode-generator@1.4.4/qrcode.js` —
+  same pattern as Leaflet (not an ES module on the CDN build, so it can't
+  be `import`ed from the module script). The QR image is generated once
+  and cached (`qrGenerated` flag) rather than regenerated every time the
+  panel is toggled open. Deliberately excluded from `@media print`'s
+  hide-list is *not* the case here — `.share-panel` IS hidden when
+  printing (a QR code and "copy link" button aren't useful on paper),
+  unlike `.drive-line` which is deliberately left visible when printed.
+- **Currency conversion in Budget.** A dropdown at the top of the Budget
+  panel lets you declare what currency the budgeted/actual figures are
+  entered in (defaults to reading `budgetCurrency`, see Data model). If
+  that's not the app's home currency (SGD, hardcoded as
+  `HOME_CURRENCY`), a line under the budget table shows a live reference
+  conversion of the totals to SGD, fetched from the Frankfurter API
+  (`api.frankfurter.dev`, ECB reference rates, no key) and cached per
+  currency for the session (`fxRateCache`) since it doesn't change
+  minute to minute. This is explicitly a *reference* conversion for
+  planning, not a live/authoritative exchange rate — ECB reference rates
+  update once a day on banking days. Changing the dropdown writes
+  `budgetCurrency` back to Firebase immediately so it's remembered for
+  next time and syncs to the other person.
+- **Temporal Dead Zone (TDZ) bug — found and fixed this round, not just
+  new-feature risk.** `renderAll()` can run *synchronously* during the
+  very first paint, straight off the `localStorage` offline cache, before
+  the module script has finished executing top-to-bottom (see "Offline
+  resilience" above). Any `const`/`let` declared *after* the line that
+  first calls it will throw `ReferenceError: Cannot access 'X' before
+  initialization` the first time that code path runs — this is the JS
+  Temporal Dead Zone, and it's silent here because the offline-cache
+  render is wrapped in try/catch, so the error was swallowed and the
+  live Firebase render (which happens later, after the whole script has
+  loaded) painted correctly a moment after — nothing looked broken unless
+  you were specifically watching the console on first load. `function`
+  declarations are NOT affected (fully hoisted) — only `const`/`let`.
+  While building this round's drive-time and currency features, this bug
+  would have hit the new `routeCache` and `HOME_CURRENCY`/`fxRateCache`
+  declarations. Fixing it surfaced that it was **already present and
+  already firing**, undetected, for two pre-existing declarations:
+  `weatherCache`/`WMO` (weather) and `leafletMap`/`markerLayer` (map) —
+  both declared later in the file than the offline-cache render that can
+  reach them. It only actually threw for the Singapore trip, never the
+  Australia one, because the weather-fetch code path is only reached for
+  itinerary days within ~16 days of today — true for Singapore (a live
+  test trip happening now) but never for Australia (months out), so
+  Singapore was the first trip that ever actually exercised the buggy
+  path. Fixed by moving all four declarations (`routeCache`,
+  `HOME_CURRENCY`/`fxRateCache`, `weatherCache`/`WMO`,
+  `leafletMap`/`markerLayer`) to before the offline-cache render call,
+  right after `writeValue()`'s definition — with inline comments
+  explaining *why* they're up there instead of near their point of use,
+  specifically so a future session doesn't "clean this up" by moving one
+  back down next to the function that uses it. **Lesson for future
+  sessions:** any new top-level `const`/`let` needs to be checked against
+  what the offline-cache render (which runs synchronously, early, on
+  every page load) can reach — if in doubt, declare it early, right after
+  `writeValue()`, rather than next to its point of use.
 
 ## Known limitations (already communicated to the user — don't "fix" silently)
 
@@ -453,6 +545,22 @@ giving up per-trip URLs.
     a brief teal flash confirms any field's value was actually written.
     Applied everywhere fields are committed: `commitOnBlur()`, the
     itinerary location field, and the header title/subtitle/days fields.
+14. User confirmed the dashboard "working perfectly" and asked for more
+    features; agreed to drive time between stops, a trip countdown, a QR
+    code/share link, and currency conversion in the budget — explicitly
+    *not* expense splitting. All four built (see Feature notes). While
+    building them, found and fixed a real, previously-undiscovered
+    Temporal Dead Zone bug affecting `weatherCache`/`WMO` and
+    `leafletMap`/`markerLayer` (pre-existing, not introduced this round)
+    as well as risk in the two new features' own module-level state — see
+    the TDZ writeup under Feature notes for the full mechanism and the
+    lesson for future sessions. Propagated to all three files (engine,
+    Australia, Singapore) by regenerating each trip file from the
+    updated engine template (splicing back in just that trip's `<title>`
+    and `TRIP_ID`/`TRIP_LABEL`/`TRIP_SEED` block) rather than manually
+    repeating ~15 discrete edits twice more — verified byte-for-byte
+    parity between engine and both trip files outside that spliced block,
+    and `node --check` syntax validity on all three.
 
 ## Trips so far
 
@@ -472,3 +580,12 @@ giving up per-trip URLs.
   painful to maintain (see "Why duplicated" above).
 - Offline write queueing, if spotty signal on an actual drive turns out to
   be a real problem in practice rather than a theoretical one.
+- One-time cleanup: set `budgetCurrency: 'AUD'` on the already-seeded
+  Australia trip's Firebase data (won't happen automatically — existing
+  trips aren't re-seeded from an updated `TRIP_SEED`, see Data model).
+  Singapore is fine left at the default (already SGD).
+- No UI yet to un-share / revoke a share link — the QR/share panel just
+  surfaces the existing (unauthed) URL, it doesn't add any new access
+  control. Consistent with the existing "anyone with the link" trust
+  model (see Known limitations), just making the link easier to hand
+  someone.

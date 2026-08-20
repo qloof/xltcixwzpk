@@ -70,6 +70,10 @@
   .name-input { font-family: var(--font-mono); font-size: 11px; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 4px 8px; width: 120px; }
   .print-btn { font-family: var(--font-mono); font-size: 11px; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 5px 10px; cursor: pointer; }
   .print-btn:hover { background: var(--brass-soft); }
+  .share-panel { display: none; flex-direction: column; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; margin: 0 0 16px; }
+  .share-panel.show { display: flex; }
+  .share-panel img { display: block; border: 1px solid var(--line); border-radius: var(--radius); }
+  .share-url { font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); word-break: break-all; text-align: center; max-width: 320px; }
 
   .tabs { display: flex; gap: 2px; margin: 14px 0 0; background: var(--line); border-radius: var(--radius); padding: 2px; overflow-x: auto; }
   .tab { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; background: transparent; border: none; padding: 10px 16px; color: var(--ink-soft); cursor: pointer; white-space: nowrap; border-radius: var(--radius); }
@@ -106,6 +110,8 @@
   .coords-row input:focus { outline: 1px dashed var(--brass); outline-offset: 2px; }
   .weather-line { font-family: var(--font-mono); font-size: 12px; color: var(--teal); margin-top: 6px; }
   .weather-line.muted { color: var(--ink-soft); font-style: italic; }
+  .drive-line { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); margin-top: 4px; }
+  .drive-line.muted { font-style: italic; }
   .geocode-feedback { font-family: var(--font-mono); font-size: 11px; color: var(--brass); margin: 4px 0 0; display: none; }
   .geocode-feedback.show { display: block; }
 
@@ -130,6 +136,9 @@
   td { padding: 10px 10px; border-bottom: 1px dotted var(--line); }
   td:not(:first-child), th:not(:first-child) { text-align: right; font-family: var(--font-mono); }
   tr.total td { font-weight: 600; border-top: 2px solid var(--ink); border-bottom: none; font-family: var(--font-mono); }
+  .currency-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+  .currency-select { font-family: var(--font-mono); font-size: 12px; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 4px 8px; }
+  .fx-line { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-soft); margin-top: 10px; font-style: italic; }
 
   .contact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
   .contact-card .field-label { margin-top: 8px; }
@@ -145,7 +154,7 @@
   .offline-banner.show { display: block; }
 
   @media print {
-    .tabs, .add-row, .remove-row, .tier-add, .toolbar, #mapView, .offline-banner { display: none !important; }
+    .tabs, .add-row, .remove-row, .tier-add, .toolbar, #mapView, .offline-banner, .share-panel { display: none !important; }
     .panel { display: block !important; margin-top: 14px; }
     .card { break-inside: avoid; }
     body { background: #fff; }
@@ -160,7 +169,7 @@
       <p class="stub-eyebrow">Road Trip Dashboard</p>
       <h1 class="stub-title" id="title" contenteditable="true" spellcheck="false">[Trip Name]</h1>
       <p class="stub-sub" id="subtitle" contenteditable="true" spellcheck="false">[Destination(s)] · [Start date] – [End date]</p>
-      <span class="stub-status">Status: Planning</span>
+      <span class="stub-status" id="stubStatus">Status: Planning</span>
     </div>
     <div class="stub-ticket">
       <div><div class="ticket-no" id="tripCode">TRIP · ------</div></div>
@@ -175,8 +184,14 @@
     <div class="sync-status"><span class="sync-dot" id="syncDot"></span><span id="syncText">Connecting…</span></div>
     <div class="toolbar-right">
       <input class="name-input" id="editorName" type="text" placeholder="Editing as…" spellcheck="false">
+      <button class="print-btn" id="shareBtn" type="button">Share</button>
       <button class="print-btn" id="printBtn">Print / Save PDF</button>
     </div>
+  </div>
+  <div class="share-panel" id="sharePanel">
+    <div id="qrCode"></div>
+    <div class="share-url" id="shareUrl"></div>
+    <button class="print-btn" id="copyLinkBtn" type="button">Copy link</button>
   </div>
   <div class="offline-banner" id="offlineBanner">Showing last synced copy — no connection right now. Edits won't save until you're back online.</div>
 
@@ -239,12 +254,33 @@
 
   <div class="panel" id="budget">
     <section>
-      <h2>Budget tracker (AUD)</h2>
-      <p class="section-hint">Placeholder figures — totals compute automatically from what's entered below.</p>
+      <h2>Budget tracker</h2>
+      <p class="section-hint">Totals are computed automatically from what's entered below.</p>
+      <div class="currency-row">
+        <span class="field-label" style="margin:0;">Figures entered in</span>
+        <select id="budgetCurrency" class="currency-select">
+          <option value="SGD">SGD</option>
+          <option value="AUD">AUD</option>
+          <option value="USD">USD</option>
+          <option value="EUR">EUR</option>
+          <option value="GBP">GBP</option>
+          <option value="JPY">JPY</option>
+          <option value="MYR">MYR</option>
+          <option value="THB">THB</option>
+          <option value="IDR">IDR</option>
+          <option value="PHP">PHP</option>
+          <option value="NZD">NZD</option>
+          <option value="CNY">CNY</option>
+          <option value="KRW">KRW</option>
+          <option value="HKD">HKD</option>
+          <option value="INR">INR</option>
+        </select>
+      </div>
       <table>
         <thead><tr><th>Category</th><th>Budgeted</th><th>Actual</th></tr></thead>
         <tbody id="budgetBody"></tbody>
       </table>
+      <div class="fx-line" id="budgetFxLine"></div>
     </section>
   </div>
 
@@ -270,6 +306,7 @@
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/qrcode-generator@1.4.4/qrcode.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getDatabase, ref, onValue, set, push, child, get } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
@@ -281,6 +318,10 @@ const firebaseConfig = {
   projectId: "trip-dashboard-c6f8a",
 };
 
+// ============================================================
+// PER-TRIP SETTINGS — the only two things a new trip file needs
+// to change (plus TRIP_SEED below) when copied from this engine.
+// ============================================================
 const TRIP_ID = 'australia-dec-2026';
 const TRIP_LABEL = 'AUS · DEC 2026';
 const TRIP_SEED = {
@@ -363,175 +404,140 @@ document.getElementById('footerNote').textContent = `Trip: ${tripId} — this li
 
 const tripRef = ref(db, `trips/${tripId}`);
 const CACHE_KEY = `trip-cache-${tripId}`;
-const SEED = TRIP_SEED;
 
+const GENERIC_SEED = {
+  meta: { title: '[Trip Name]', subtitle: '[Destination(s)] · [Start date] – [End date]', days: '—' },
+  itineraryDays: [
+    { date: '', location: '[town / stop name]', lat: '', lon: '', plan: '[main activity, booking ref if any]', lodging: '[hotel / campsite, confirmation #]', alt: '' },
+  ],
+  checklists: {
+    w4: ['[e.g. confirm time off work]', '[e.g. book primary lodging]'],
+    w2: ['[e.g. arrange pet/house sitter]', '[e.g. verify opening hours for planned stops]'],
+    packingLongfen: ['[e.g. passport / ID]', '[e.g. chargers + adapter]', '[e.g. weather-appropriate clothing]'],
+    packingGwen: ['[e.g. passport / ID]', '[e.g. chargers + adapter]', '[e.g. weather-appropriate clothing]'],
+    dayBefore: ['[e.g. charge devices]', '[e.g. re-check weather + closures]'],
+    onRoad: ['[e.g. daily check-in with home]'],
+  },
+  contacts: [{ name: '[e.g. Roadside assistance]', ref: '[number]' }],
+  budget: {
+    lodging:    { label: 'Lodging',          budgeted: '', actual: '' },
+    transport:  { label: 'Transport / fuel', budgeted: '', actual: '' },
+    food:       { label: 'Food',             budgeted: '', actual: '' },
+    activities: { label: 'Activities',       budgeted: '', actual: '' },
+    misc:       { label: 'Misc / buffer',    budgeted: '', actual: '' },
+  },
+  extras: [{ item: '[what needs tracking]', notes: '[details]' }],
+};
+const SEED = TRIP_SEED || GENERIC_SEED;
+
+// ---- editor name (local only, for the "last edited by" tag) ----
 const nameInput = document.getElementById('editorName');
 nameInput.value = localStorage.getItem('trip-editor-name') || '';
 nameInput.addEventListener('blur', () => localStorage.setItem('trip-editor-name', nameInput.value.trim()));
 function editorName() { return localStorage.getItem('trip-editor-name')?.trim() || 'Someone'; }
 
+// ---- central write helper: every field commit goes through here so we can
+// stamp who/when without threading it through every handler individually ----
 function writeValue(path, value) {
   set(ref(db, path), value);
   set(ref(db, `trips/${tripId}/meta/lastEditedBy`), editorName());
   set(ref(db, `trips/${tripId}/meta/lastEditedAt`), new Date().toISOString());
 }
 
-get(tripRef).then(snap => {
-  if (snap.exists()) return;
-  const seeded = {
-    meta: SEED.meta,
-    itinerary: {},
-    checklists: { w4: {}, w2: {}, packingLongfen: {}, packingGwen: {}, dayBefore: {}, onRoad: {} },
-    budget: SEED.budget,
-    contacts: {},
-    extras: {},
-  };
-  SEED.itineraryDays.forEach(day => {
-    const key = push(child(tripRef, 'itinerary')).key;
-    seeded.itinerary[key] = day;
-  });
-  Object.entries(SEED.checklists).forEach(([tier, items]) => {
-    items.forEach(text => {
-      const key = push(child(tripRef, `checklists/${tier}`)).key;
-      seeded.checklists[tier][key] = { text, checked: false };
-    });
-  });
-  SEED.contacts.forEach(c => {
-    const key = push(child(tripRef, 'contacts')).key;
-    seeded.contacts[key] = c;
-  });
-  SEED.extras.forEach(x => {
-    const key = push(child(tripRef, 'extras')).key;
-    seeded.extras[key] = x;
-  });
-  set(tripRef, seeded);
-});
-
-const cached = localStorage.getItem(CACHE_KEY);
-if (cached) {
-  try { renderAll(JSON.parse(cached)); } catch (e) { /* ignore bad cache */ }
-}
-const offlineTimer = setTimeout(() => {
-  if (!hasSynced) document.getElementById('offlineBanner').classList.add('show');
-}, 6000);
-
-let hasSynced = false;
-let firstSync = true;
-onValue(tripRef, snap => {
-  hasSynced = true;
-  clearTimeout(offlineTimer);
-  document.getElementById('offlineBanner').classList.remove('show');
-  const data = snap.val() || {};
-  localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-  document.getElementById('syncDot').classList.remove('offline');
-  document.getElementById('syncDot').classList.add('ok');
-  const who = data.meta?.lastEditedBy;
-  document.getElementById('syncText').textContent = firstSync
-    ? 'Synced'
-    : `Synced${who ? ' · edited by ' + who : ''} · just now`;
-  firstSync = false;
-  renderAll(data);
-}, err => {
-  document.getElementById('syncDot').classList.add('offline');
-  document.getElementById('syncText').textContent = 'Sync error — check console';
-  console.error(err);
-});
-
-function renderAll(data) {
-  renderMeta(data.meta || {});
-  renderItinerary(data.itinerary || {});
-  renderChecklists(data.checklists || {});
-  renderBudget(data.budget || {});
-  renderContacts(data.contacts || {});
-  renderExtras(data.extras || {});
+// ---- currency conversion (Frankfurter API — ECB reference rates, no key) ----
+// The budget table itself is just numbers with no currency attached — this
+// lets the human say what currency those numbers ARE in (e.g. AUD while
+// actually spending money in Australia) and shows a reference conversion
+// back to home currency (SGD), rather than guessing or forcing one
+// currency. Rates update once daily on weekdays (ECB publishes ~16:00
+// CET) — fine for a reference figure, not meant for precise settling.
+// Declared here (not near renderBudget, where it's used) because
+// renderAll() — and therefore renderBudget() — can run synchronously
+// during the very first offline-cache render below, before the script has
+// finished executing top to bottom; a `const` referenced from code that
+// runs before its own declaration line throws (temporal dead zone), so
+// this has to sit above that first renderAll() call, not just above its
+// own point of use.
+const HOME_CURRENCY = 'SGD';
+const fxRateCache = {};
+async function fetchFxRate(fromCurrency) {
+  if (fromCurrency === HOME_CURRENCY) return 1;
+  if (fromCurrency in fxRateCache) return fxRateCache[fromCurrency];
+  try {
+    const url = `https://api.frankfurter.dev/v1/latest?base=${fromCurrency}&symbols=${HOME_CURRENCY}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    const rate = json?.rates?.[HOME_CURRENCY] ?? null;
+    fxRateCache[fromCurrency] = rate;
+    return rate;
+  } catch (e) {
+    return null;
+  }
 }
 
-// Only counts as "actively editing" (and therefore worth protecting from a
-// remote re-render stealing focus/cursor) if the focused element is
-// something you type into — a text input, contenteditable span, etc.
-// A focused BUTTON doesn't qualify: right after tapping "Remove" or a
-// ▲/▼ reorder button, the browser leaves focus sitting on that button,
-// which is still inside the guarded container. Treating that as "editing"
-// meant the re-render triggered by the button's own write got silently
-// skipped — the underlying data changed correctly, but nothing visibly
-// moved until the next full page load. That was the bug.
-function focusedInside(container) {
-  const el = document.activeElement;
-  if (!container || !el || !container.contains(el)) return false;
-  return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable;
+// ---- drive time to the next stop (OSRM public routing server, no key) ----
+// Public demo instance (router.project-osrm.org) — its own docs say it's
+// for evaluation, not guaranteed production use, but this app's usage
+// (occasional lookups between consecutive itinerary stops, cached per
+// route so a re-render doesn't re-fetch) is well within that. Same
+// "not verified end-to-end from this dev environment" caveat as the
+// geocoder and FX rate lookup above — the sandbox this was built in
+// can't reach these hosts directly to confirm live-browser behavior.
+// Declared here, not near attachDriveTime()'s point of use in
+// renderItinerary(), for the same temporal-dead-zone reason as
+// HOME_CURRENCY above — the first offline-cache render below can call it
+// synchronously before the script has finished executing top to bottom.
+const routeCache = new Map();
+async function fetchDriveTime(lat1, lon1, lat2, lon2) {
+  const key = `${lat1},${lon1},${lat2},${lon2}`;
+  if (routeCache.has(key)) return routeCache.get(key);
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=false`;
+    const res = await fetch(url);
+    const json = await res.json();
+    const route = json?.routes?.[0];
+    const result = route ? { seconds: route.duration, meters: route.distance } : null;
+    routeCache.set(key, result);
+    return result;
+  } catch (e) {
+    return null;
+  }
 }
-// These fields are meant to hold a single line of text, but a bare
-// contenteditable span's default behavior for Enter is to insert a line
-// break, not to submit — so pressing Enter silently did nothing you could
-// see (the value only committed later, on blur, whenever that happened),
-// which read as "did my edit even register?" Enter now blurs the field
-// immediately instead, which — combined with flashSaved() below — makes
-// it behave like pressing Enter in a normal form field: it visibly commits.
-function commitOnEnter(el) {
-  el.addEventListener('keydown', e => {
-    if (e.key !== 'Enter') return;
-    e.preventDefault();
-    el.blur();
-  });
-}
-// Brief teal flash on a field right after its value is written, so there's
-// a visible "yes, that was received" moment instead of just trusting that
-// a blur silently did something. Reuses --teal (the same color the sync
-// dot uses for "connected/ok") rather than introducing a new accent color.
-function flashSaved(el) {
-  el.classList.add('field-saved');
-  setTimeout(() => el.classList.remove('field-saved'), 500);
-}
-function commitOnBlur(el, writePath) {
-  commitOnEnter(el);
-  el.addEventListener('blur', () => {
-    writeValue(writePath, el.textContent);
-    flashSaved(el);
+function attachDriveTime(el, lat1, lon1, lat2, lon2, nextLabel) {
+  if (!lat1 || !lon1 || !lat2 || !lon2) { el.textContent = ''; return; }
+  el.textContent = 'Checking drive time…';
+  el.classList.add('muted');
+  fetchDriveTime(lat1, lon1, lat2, lon2).then(r => {
+    if (!r) { el.textContent = ''; return; }
+    el.classList.remove('muted');
+    const mins = Math.round(r.seconds / 60);
+    const km = Math.round(r.meters / 1000);
+    const hrs = Math.floor(mins / 60);
+    const remMins = mins % 60;
+    const timeLabel = hrs > 0 ? `${hrs}h ${remMins}m` : `${mins} min`;
+    el.textContent = `🚗 ${timeLabel} · ${km} km to ${nextLabel || 'next stop'}`;
   });
 }
 
-function renderMeta(meta) {
-  const titleEl = document.getElementById('title');
-  const subEl = document.getElementById('subtitle');
-  const daysEl = document.getElementById('days');
-  if (document.activeElement !== titleEl) titleEl.textContent = meta.title ?? '';
-  if (document.activeElement !== subEl) subEl.textContent = meta.subtitle ?? '';
-  if (document.activeElement !== daysEl) daysEl.textContent = meta.days ?? '—';
-  titleEl.onblur = () => { writeValue(`trips/${tripId}/meta/title`, titleEl.textContent); flashSaved(titleEl); };
-  subEl.onblur = () => { writeValue(`trips/${tripId}/meta/subtitle`, subEl.textContent); flashSaved(subEl); };
-  daysEl.onblur = () => { writeValue(`trips/${tripId}/meta/days`, daysEl.textContent); flashSaved(daysEl); };
-  // renderMeta() re-runs on every Firebase sync, and these three elements
-  // are fixed (not recreated each render) — using .onkeydown assignment
-  // rather than commitOnEnter()'s addEventListener means each render
-  // replaces the handler instead of stacking a duplicate one.
-  const commitEnterKeydown = e => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } };
-  titleEl.onkeydown = subEl.onkeydown = daysEl.onkeydown = commitEnterKeydown;
-}
-
-function todayISO() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-function formatDate(iso) {
-  if (!iso) return 'Add date';
-  const d = new Date(iso + 'T00:00:00');
-  if (isNaN(d)) return iso;
-  return d.toLocaleDateString('en-SG', { weekday: 'short', day: 'numeric', month: 'short' });
-}
-// Full weekday name ("Tuesday") for the itinerary card's stacked date display.
-function formatWeekday(iso) {
-  if (!iso) return 'No date set';
-  const d = new Date(iso + 'T00:00:00');
-  if (isNaN(d)) return '';
-  return d.toLocaleDateString('en-SG', { weekday: 'long' });
-}
-// d/m/yyyy, no leading zeros — matches the numeric line under the weekday.
-function formatNumericDate(iso) {
-  if (!iso) return '';
-  const d = new Date(iso + 'T00:00:00');
-  if (isNaN(d)) return iso;
-  return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
-}
+// ---- weather (Open-Meteo, no API key; only returns data within ~16 days of
+// today) — moved here (was originally right before renderItinerary, its
+// point of use) for the same temporal-dead-zone reason as the two blocks
+// above: this app's offline-first render (below) can call renderItinerary()
+// synchronously before the script finishes executing top to bottom, and a
+// `const` referenced before its own declaration line has run throws. This
+// was a real pre-existing latent bug, not hypothetical — caught while
+// fixing the same pattern for HOME_CURRENCY/routeCache this round. It
+// didn't visibly break anything before now because (a) the offline-render
+// call is wrapped in try/catch, so the error was silently swallowed and
+// the live Firebase render moments later painted correctly anyway, and
+// (b) it only fires for itinerary days within ~15 days of today, which
+// the Australia trip (months out) never triggered — the Singapore trip,
+// running in real time, was the first to actually exercise this path.
+// ---- map (declared here, not near renderMap() below, for the same
+// temporal-dead-zone reason as the blocks above — renderItinerary() calls
+// renderMap() unconditionally, including during the offline-first render) ----
+let leafletMap = null;
+let markerLayer = null;
 
 const weatherCache = new Map();
 const WMO = {
@@ -575,6 +581,197 @@ function attachWeather(el, lat, lon, date) {
   });
 }
 
+// ---- seed a brand-new trip id once ----
+get(tripRef).then(snap => {
+  if (snap.exists()) return;
+  const seeded = {
+    meta: SEED.meta,
+    itinerary: {},
+    checklists: { w4: {}, w2: {}, packingLongfen: {}, packingGwen: {}, dayBefore: {}, onRoad: {} },
+    budget: SEED.budget,
+    contacts: {},
+    extras: {},
+  };
+  SEED.itineraryDays.forEach(day => {
+    const key = push(child(tripRef, 'itinerary')).key;
+    seeded.itinerary[key] = day;
+  });
+  Object.entries(SEED.checklists).forEach(([tier, items]) => {
+    items.forEach(text => {
+      const key = push(child(tripRef, `checklists/${tier}`)).key;
+      seeded.checklists[tier][key] = { text, checked: false };
+    });
+  });
+  SEED.contacts.forEach(c => {
+    const key = push(child(tripRef, 'contacts')).key;
+    seeded.contacts[key] = c;
+  });
+  SEED.extras.forEach(x => {
+    const key = push(child(tripRef, 'extras')).key;
+    seeded.extras[key] = x;
+  });
+  set(tripRef, seeded);
+});
+
+// ---- offline-first render: paint from localStorage cache immediately if present,
+// then let the live Firebase listener take over once it connects ----
+const cached = localStorage.getItem(CACHE_KEY);
+if (cached) {
+  try { renderAll(JSON.parse(cached)); } catch (e) { /* ignore bad cache */ }
+}
+const offlineTimer = setTimeout(() => {
+  if (!hasSynced) document.getElementById('offlineBanner').classList.add('show');
+}, 6000);
+
+let hasSynced = false;
+let firstSync = true;
+onValue(tripRef, snap => {
+  hasSynced = true;
+  clearTimeout(offlineTimer);
+  document.getElementById('offlineBanner').classList.remove('show');
+  const data = snap.val() || {};
+  localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+  document.getElementById('syncDot').classList.remove('offline');
+  document.getElementById('syncDot').classList.add('ok');
+  const who = data.meta?.lastEditedBy;
+  document.getElementById('syncText').textContent = firstSync
+    ? 'Synced'
+    : `Synced${who ? ' · edited by ' + who : ''} · just now`;
+  firstSync = false;
+  renderAll(data);
+}, err => {
+  document.getElementById('syncDot').classList.add('offline');
+  document.getElementById('syncText').textContent = 'Sync error — check console';
+  console.error(err);
+});
+
+function renderAll(data) {
+  renderMeta(data.meta || {});
+  updateTripStatus(data.itinerary || {});
+  renderItinerary(data.itinerary || {});
+  renderChecklists(data.checklists || {});
+  renderBudget(data.budget || {}, data.budgetCurrency || HOME_CURRENCY);
+  renderContacts(data.contacts || {});
+  renderExtras(data.extras || {});
+}
+
+// Turns the static "Status: Planning" badge into a live countdown/progress
+// indicator computed from the itinerary's own dates — no separate field to
+// keep in sync, no manual updating. Before the trip: "T-minus N days".
+// During (today falls within the earliest-to-latest itinerary date span):
+// "Day X of Y". After the last date: "Trip complete". Falls back to the
+// original static text if no itinerary day has a date yet.
+function updateTripStatus(itinerary) {
+  const statusEl = document.getElementById('stubStatus');
+  const dates = Object.values(itinerary).map(d => d.date).filter(Boolean).sort();
+  if (!dates.length) { statusEl.textContent = 'Status: Planning'; return; }
+  const first = dates[0], last = dates[dates.length - 1];
+  const today = todayISO();
+  if (today < first) {
+    const days = Math.round((new Date(first) - new Date(today)) / 86400000);
+    statusEl.textContent = `T-minus ${days} day${days === 1 ? '' : 's'}`;
+  } else if (today > last) {
+    statusEl.textContent = 'Trip complete';
+  } else {
+    const dayNum = Math.round((new Date(today) - new Date(first)) / 86400000) + 1;
+    const totalDays = Math.round((new Date(last) - new Date(first)) / 86400000) + 1;
+    statusEl.textContent = `Day ${dayNum} of ${totalDays} · In progress`;
+  }
+}
+
+// Only counts as "actively editing" (and therefore worth protecting from a
+// remote re-render stealing focus/cursor) if the focused element is
+// something you type into — a text input, contenteditable span, etc.
+// A focused BUTTON doesn't qualify: right after tapping "Remove" or a
+// ▲/▼ reorder button, the browser leaves focus sitting on that button,
+// which is still inside the guarded container. Treating that as "editing"
+// meant the re-render triggered by the button's own write got silently
+// skipped — the underlying data changed correctly, but nothing visibly
+// moved until the next full page load. That was the bug.
+function focusedInside(container) {
+  const el = document.activeElement;
+  if (!container || !el || !container.contains(el)) return false;
+  return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable;
+}
+// These fields are meant to hold a single line of text, but a bare
+// contenteditable span's default behavior for Enter is to insert a line
+// break, not to submit — so pressing Enter silently did nothing you could
+// see (the value only committed later, on blur, whenever that happened),
+// which read as "did my edit even register?" Enter now blurs the field
+// immediately instead, which — combined with flashSaved() below — makes
+// it behave like pressing Enter in a normal form field: it visibly commits.
+function commitOnEnter(el) {
+  el.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    el.blur();
+  });
+}
+// Brief teal flash on a field right after its value is written, so there's
+// a visible "yes, that was received" moment instead of just trusting that
+// a blur silently did something. Reuses --teal (the same color the sync
+// dot uses for "connected/ok") rather than introducing a new accent color.
+function flashSaved(el) {
+  el.classList.add('field-saved');
+  setTimeout(() => el.classList.remove('field-saved'), 500);
+}
+function commitOnBlur(el, writePath, isCheckbox) {
+  commitOnEnter(el);
+  el.addEventListener('blur', () => {
+    writeValue(writePath, el.textContent);
+    flashSaved(el);
+  });
+}
+
+function renderMeta(meta) {
+  const titleEl = document.getElementById('title');
+  const subEl = document.getElementById('subtitle');
+  const daysEl = document.getElementById('days');
+  if (document.activeElement !== titleEl) titleEl.textContent = meta.title ?? '';
+  if (document.activeElement !== subEl) subEl.textContent = meta.subtitle ?? '';
+  if (document.activeElement !== daysEl) daysEl.textContent = meta.days ?? '—';
+  titleEl.onblur = () => { writeValue(`trips/${tripId}/meta/title`, titleEl.textContent); flashSaved(titleEl); };
+  subEl.onblur = () => { writeValue(`trips/${tripId}/meta/subtitle`, subEl.textContent); flashSaved(subEl); };
+  daysEl.onblur = () => { writeValue(`trips/${tripId}/meta/days`, daysEl.textContent); flashSaved(daysEl); };
+  // renderMeta() re-runs on every Firebase sync, and these three elements
+  // are fixed (not recreated each render) — using .onkeydown assignment
+  // rather than commitOnEnter()'s addEventListener means each render
+  // replaces the handler instead of stacking a duplicate one.
+  const commitEnterKeydown = e => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } };
+  titleEl.onkeydown = subEl.onkeydown = daysEl.onkeydown = commitEnterKeydown;
+}
+
+// ---- date / today helpers ----
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function formatDate(iso) {
+  if (!iso) return 'Add date';
+  const d = new Date(iso + 'T00:00:00');
+  if (isNaN(d)) return iso;
+  return d.toLocaleDateString('en-SG', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+// Full weekday name ("Tuesday") for the itinerary card's stacked date display.
+function formatWeekday(iso) {
+  if (!iso) return 'No date set';
+  const d = new Date(iso + 'T00:00:00');
+  if (isNaN(d)) return '';
+  return d.toLocaleDateString('en-SG', { weekday: 'long' });
+}
+// d/m/yyyy, no leading zeros — matches the numeric line under the weekday.
+function formatNumericDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso + 'T00:00:00');
+  if (isNaN(d)) return iso;
+  return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+}
+
+
+// ---- geocoding (Open-Meteo geocoding API, no key) — fills lat/lon from a
+// typed location name so the human doesn't need to look up or see raw
+// coordinates; the coords row stays hidden behind a toggle for the rare
+// case the auto-match is wrong (ambiguous place names) and needs fixing. ----
 // Nominatim (OpenStreetMap), not Open-Meteo's geocoder. Open-Meteo's
 // geocoding endpoint was tried first (round 3) because it's the same
 // keyless API already used for weather — but it turned out to be a
@@ -679,6 +876,7 @@ function renderItinerary(itinerary) {
       <div class="field"><span class="field-label">Lodging</span><span contenteditable="true" data-f="lodging"></span></div>
       <div class="field"><span class="field-label">Alternate (weather / closure)</span><span contenteditable="true" data-f="alt"></span></div>
       <div class="weather-line" data-weather></div>
+      <div class="drive-line" data-drive></div>
       <button class="remove-row" data-remove>− Remove this day</button>`;
 
     const latInput = card.querySelector('[data-f="lat"]');
@@ -783,6 +981,8 @@ function renderItinerary(itinerary) {
 
     updateWazeLink();
     attachWeather(card.querySelector('[data-weather]'), day.lat, day.lon, day.date);
+    const nextDay = entries[i + 1]?.[1];
+    attachDriveTime(card.querySelector('[data-drive]'), day.lat, day.lon, nextDay?.lat, nextDay?.lon, nextDay?.location);
   });
 
   renderMap(entries);
@@ -792,8 +992,7 @@ document.getElementById('addDay').onclick = () => {
   writeValue(`trips/${tripId}/itinerary/${key}`, { date: '', location: '', lat: '', lon: '', plan: '', lodging: '', alt: '', coordsManual: false, order: 0 });
 };
 
-let leafletMap = null;
-let markerLayer = null;
+// ---- map ----
 function renderMap(sortedEntries) {
   if (typeof L === 'undefined') return;
   if (!leafletMap) {
@@ -821,6 +1020,7 @@ function renderMap(sortedEntries) {
   }
   setTimeout(() => leafletMap.invalidateSize(), 50);
 }
+document.querySelector('[data-panel="map"]');
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
     if (tab.dataset.panel === 'map' && leafletMap) setTimeout(() => leafletMap.invalidateSize(), 50);
@@ -854,7 +1054,7 @@ document.querySelectorAll('.tier-add').forEach(btn => {
   };
 });
 
-function renderBudget(budget) {
+function renderBudget(budget, budgetCurrency) {
   const body = document.getElementById('budgetBody');
   if (focusedInside(body)) return;
   body.innerHTML = '';
@@ -874,7 +1074,26 @@ function renderBudget(budget) {
   totalRow.className = 'total';
   totalRow.innerHTML = `<td>Total</td><td>${totalB || '—'}</td><td>${totalA || '—'}</td>`;
   body.appendChild(totalRow);
+
+  const currencySel = document.getElementById('budgetCurrency');
+  if (document.activeElement !== currencySel) currencySel.value = budgetCurrency;
+
+  const fxLine = document.getElementById('budgetFxLine');
+  if (budgetCurrency === HOME_CURRENCY || (!totalB && !totalA)) {
+    fxLine.textContent = '';
+  } else {
+    fxLine.textContent = 'Converting…';
+    fetchFxRate(budgetCurrency).then(rate => {
+      if (!rate) { fxLine.textContent = ''; return; }
+      const bHome = Math.round(totalB * rate);
+      const aHome = Math.round(totalA * rate);
+      fxLine.textContent = `≈ ${HOME_CURRENCY} ${bHome} budgeted / ${aHome} actual, at today's rate (1 ${budgetCurrency} = ${rate.toFixed(4)} ${HOME_CURRENCY})`;
+    });
+  }
 }
+document.getElementById('budgetCurrency').addEventListener('change', e => {
+  writeValue(`trips/${tripId}/budgetCurrency`, e.target.value);
+});
 
 function renderContacts(contacts) {
   const grid = document.getElementById('contactGrid');
@@ -936,6 +1155,38 @@ document.querySelectorAll('.tab').forEach(tab => {
 });
 
 document.getElementById('printBtn').onclick = () => window.print();
+
+// ---- share panel: QR code + copyable link ----
+// The URL is completely static for a given trip (one file per trip, no
+// query-param trip codes since round 5 — see DEV_NOTES "Folder / URL
+// convention"), so the QR only needs generating once, lazily, on first
+// open rather than on every render.
+let qrGenerated = false;
+document.getElementById('shareBtn').onclick = () => {
+  const panel = document.getElementById('sharePanel');
+  panel.classList.toggle('show');
+  if (panel.classList.contains('show') && !qrGenerated) {
+    const url = window.location.href.split('?')[0].split('#')[0];
+    const qr = qrcode(0, 'M');
+    qr.addData(url);
+    qr.make();
+    document.getElementById('qrCode').innerHTML = qr.createImgTag(5, 8);
+    document.getElementById('shareUrl').textContent = url;
+    qrGenerated = true;
+  }
+};
+document.getElementById('copyLinkBtn').onclick = () => {
+  const url = window.location.href.split('?')[0].split('#')[0];
+  const btn = document.getElementById('copyLinkBtn');
+  const original = btn.textContent;
+  navigator.clipboard.writeText(url).then(() => {
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = original; }, 1500);
+  }).catch(() => {
+    btn.textContent = 'Copy failed — select the text above';
+    setTimeout(() => { btn.textContent = original; }, 2000);
+  });
+};
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
