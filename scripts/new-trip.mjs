@@ -120,7 +120,14 @@ if (fs.existsSync(tripsJsonPath)) {
   }
 }
 if (trips !== null) {
-  trips.push({ slug, title, subtitle: seed.meta?.subtitle || '' });
+  // Drives the landing page's Current/Past grouping (see its own comment) —
+  // computed from the itinerary's own dates, same min/max-date approach
+  // app.js's updateTripStatus() uses for the "T-minus N days" badge, so
+  // this stays consistent with what each trip's own page already shows.
+  const itineraryDates = (seed.itineraryDays || []).map(d => d.date).filter(Boolean).sort();
+  const startDate = itineraryDates[0] || null;
+  const endDate = itineraryDates[itineraryDates.length - 1] || null;
+  trips.push({ slug, title, subtitle: seed.meta?.subtitle || '', startDate, endDate });
   fs.writeFileSync(tripsJsonPath, JSON.stringify(trips, null, 2) + '\n');
 }
 

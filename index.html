@@ -39,7 +39,9 @@
   .stub h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(28px, 6vw, 40px); margin: 0 0 6px; line-height: 1.05; }
   .stub p { font-family: var(--font-mono); font-size: 13px; color: var(--paper-dim); opacity: 0.75; margin: 0; }
 
-  .trip-list { display: flex; flex-direction: column; gap: 12px; }
+  .trip-list { display: flex; flex-direction: column; gap: 24px; }
+  .trip-section-list { display: flex; flex-direction: column; gap: 12px; }
+  .section-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brass); font-weight: 600; margin: 0 0 10px; }
   .trip-card { display: block; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; text-decoration: none; color: inherit; transition: border-color 0.15s ease; }
   .trip-card:hover { border-color: var(--brass); }
   .trip-card h2 { font-family: var(--font-display); font-weight: 600; font-size: 19px; margin: 0 0 4px; color: var(--ink); }
@@ -74,26 +76,72 @@
   // GitHub Pages is plain static hosting with no directory-listing API, so
   // a maintained manifest file is the only way to know what trips exist.
   const listEl = document.getElementById('tripList');
+
+  // Same local-date approach as todayISO() in app.js (getFullYear/getMonth/
+  // getDate, not toISOString) to avoid UTC-vs-local date shifting.
+  function todayISO() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  function tripCardEl(trip) {
+    const a = document.createElement('a');
+    a.className = 'trip-card';
+    a.href = `./${trip.slug}/`;
+    a.innerHTML = `<h2></h2><p></p>`;
+    a.querySelector('h2').textContent = trip.title || trip.slug;
+    a.querySelector('p').textContent = trip.subtitle || '';
+    return a;
+  }
+  function sectionEl(label, trips) {
+    const section = document.createElement('div');
+    const heading = document.createElement('p');
+    heading.className = 'section-label';
+    heading.textContent = label;
+    section.appendChild(heading);
+    const list = document.createElement('div');
+    list.className = 'trip-section-list';
+    trips.forEach(trip => list.appendChild(tripCardEl(trip)));
+    section.appendChild(list);
+    return section;
+  }
+
+  // Groups by each trip's own itinerary dates (startDate/endDate in
+  // trips.json — see scripts/new-trip.mjs) rather than fetching live
+  // Firebase data for every trip, which would mean this static page
+  // suddenly depending on Firebase just to sort a links list. This does
+  // mean a trip whose dates get edited later in the app itself won't
+  // re-bucket here until trips.json is updated too — see DEV_NOTES.md
+  // "Landing page" for the tradeoff. A trip missing startDate/endDate
+  // falls into Current Trips rather than being silently dropped.
+  function renderTripList(trips) {
+    const today = todayISO();
+    const current = [];
+    const past = [];
+    trips.forEach(trip => {
+      if (trip.endDate && trip.endDate < today) past.push(trip);
+      else current.push(trip);
+    });
+    current.sort((a, b) => (a.startDate || '9999-99-99').localeCompare(b.startDate || '9999-99-99'));
+    past.sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''));
+
+    listEl.innerHTML = '';
+    if (!current.length && !past.length) {
+      listEl.innerHTML = '<p class="empty">No trips yet — see DEV_NOTES.md "To start a new real trip."</p>';
+      return;
+    }
+    if (current.length) listEl.appendChild(sectionEl('Current Trips', current));
+    if (past.length) listEl.appendChild(sectionEl('Past Trips', past));
+  }
+
   fetch('trips.json')
     .then(res => {
       if (!res.ok) throw new Error(`trips.json: HTTP ${res.status}`);
       return res.json();
     })
     .then(trips => {
-      if (!Array.isArray(trips) || !trips.length) {
-        listEl.innerHTML = '<p class="empty">No trips yet — see DEV_NOTES.md "To start a new real trip."</p>';
-        return;
-      }
-      listEl.innerHTML = '';
-      trips.forEach(trip => {
-        const a = document.createElement('a');
-        a.className = 'trip-card';
-        a.href = `./${trip.slug}/`;
-        a.innerHTML = `<h2></h2><p></p>`;
-        a.querySelector('h2').textContent = trip.title || trip.slug;
-        a.querySelector('p').textContent = trip.subtitle || '';
-        listEl.appendChild(a);
-      });
+      if (!Array.isArray(trips)) throw new Error('trips.json is not an array');
+      renderTripList(trips);
     })
     .catch(err => {
       listEl.innerHTML = '<p class="error">Couldn’t load the trip list — check trips.json.</p>';

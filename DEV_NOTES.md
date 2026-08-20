@@ -116,9 +116,9 @@ trip-dashboard/                    (repo root)
 ├── index.html                     the landing page — lists every trip,
 │                                   reads trips.json, no Firebase/app.js
 │                                   (see Feature notes "Landing page")
-├── trips.json                     [{slug, title, subtitle}, ...] — kept up
-│                                   to date automatically by
-│                                   scripts/new-trip.mjs
+├── trips.json                     [{slug, title, subtitle, startDate,
+│                                   endDate}, ...] — kept up to date
+│                                   automatically by scripts/new-trip.mjs
 ├── template/
 │   └── index.html                  generic "engine" copy — NOT a real trip,
 │                                    the copy-source scripts/new-trip.mjs
@@ -541,21 +541,39 @@ since that card was already built as an HTML template string inside
   had to already know or dig up each trip's URL. Now it's a small static
   page (no Firebase, doesn't import `app.js`) that fetches `trips.json`
   and renders one card per trip, linking to `./<slug>/`. `trips.json` is a
-  maintained manifest (`[{slug, title, subtitle}, ...]`), not a live
-  folder listing, because GitHub Pages is plain static hosting with no
-  directory-listing API — there's no way to ask "what folders exist" at
-  runtime. `scripts/new-trip.mjs` appends to it automatically when
-  scaffolding a new trip (see "To start a new real trip"), so this stays
-  current without a separate manual step. Reuses the established palette/
-  type tokens (navy/brass/teal, IBM Plex + Fraunces) but not the ~800-line
-  component CSS from the engine template — that's all itinerary/checklist/
-  budget UI this page doesn't have. Duplicates the 3-line service-worker
-  registration `app.js` does (rather than importing `app.js` itself, which
-  would pull in Firebase this page has no use for) so a visitor whose
-  first-ever visit is the landing page still gets offline/PWA coverage.
-  This meant the engine template could no longer live at the site root
-  (GitHub Pages always serves a directory's own `index.html`) — it moved
-  to `template/index.html`; see History #17 and the folder diagram above.
+  maintained manifest (`[{slug, title, subtitle, startDate, endDate}, ...]`),
+  not a live folder listing, because GitHub Pages is plain static hosting
+  with no directory-listing API — there's no way to ask "what folders
+  exist" at runtime. `scripts/new-trip.mjs` appends to it automatically
+  when scaffolding a new trip (see "To start a new real trip"), computing
+  `startDate`/`endDate` from the seed's own `itineraryDays` (min/max date,
+  same approach `updateTripStatus()` in `app.js` uses for the "T-minus N
+  days" badge) — so this stays current without a separate manual step.
+  Reuses the established palette/type tokens (navy/brass/teal, IBM Plex +
+  Fraunces) but not the ~800-line component CSS from the engine template —
+  that's all itinerary/checklist/budget UI this page doesn't have.
+  Duplicates the 3-line service-worker registration `app.js` does (rather
+  than importing `app.js` itself, which would pull in Firebase this page
+  has no use for) so a visitor whose first-ever visit is the landing page
+  still gets offline/PWA coverage. This meant the engine template could no
+  longer live at the site root (GitHub Pages always serves a directory's
+  own `index.html`) — it moved to `template/index.html`; see History #17
+  and the folder diagram above.
+  **Current/Past grouping (added right after):** trips are split into
+  "Current Trips" (anything not yet ended — covers both upcoming and
+  in-progress under one heading, since there's usually at most one
+  in-progress trip and a separate "Upcoming" section felt like overkill
+  for two trips a year) and "Past Trips" (only rendered once there's at
+  least one), sorted soonest-first and most-recent-first respectively.
+  Grouping is computed client-side from each trip's `startDate`/`endDate`
+  in `trips.json`, not by fetching live Firebase data for every trip on
+  this page — the tradeoff is that a trip whose dates get edited later
+  inside the app itself won't re-bucket here until `trips.json` catches
+  up (a `new-trip.mjs`-adjacent manual fix, not automatic). A trip with no
+  `startDate`/`endDate` (e.g. a freshly-scaffolded blank trip whose seed
+  has no dated itinerary days yet — confirmed via a real dry run of
+  `new-trip.mjs` against its own example seed) falls into Current Trips
+  rather than being silently dropped from the list.
 
 ## Known limitations (already communicated to the user — don't "fix" silently)
 
@@ -739,6 +757,26 @@ since that card was already built as an HTML template string inside
     all serve correctly, and a DOM-id cross-reference for the landing
     page's own script. **Not verified in an actual browser**, same caveat
     as round 16 — Claude in Chrome still wasn't connected this session.
+18. Immediately after round 17, user asked whether the user could start a
+    new trip right from the landing page. Explained the tradeoffs (would
+    need a GitHub Pages 404-catch-all routing trick and moving the trip
+    list from git-committed `trips.json` to a Firebase-backed index, plus
+    it'd cost per-trip file portability and per-trip PWA identity) and
+    recommended against it given trips get added only a couple times a
+    year — user agreed, will keep asking for `new-trip.mjs` to be run
+    manually. No code changed for this part.
+    Then asked for "Past Trips"/"Current Trips" categories on the landing
+    page (see Feature notes "Landing page" — "Current/Past grouping").
+    Added `startDate`/`endDate` to `trips.json` for both existing trips and
+    to what `scripts/new-trip.mjs` computes/appends going forward, and
+    grouped the landing page's cards accordingly, client-side, from those
+    fields — deliberately not by fetching live Firebase data per trip,
+    which would reintroduce the Firebase dependency the landing page was
+    built without. Verified with a Node-side simulation of the exact
+    grouping/sort logic against real data plus synthetic past/no-date
+    cases (see the logic in `index.html`'s inline script), plus the same
+    `node --check`/dry-run/local-server/DOM-id checks as round 17.
+    **Not verified in an actual browser**, same caveat as rounds 16-17.
 
 ## Trips so far
 
@@ -748,16 +786,18 @@ since that card was already built as an HTML template string inside
 
 ## Still open / natural next steps
 
-- **Live-browser verification of rounds 16 and 17's changes** (see History
-  #16, #17) — open the site root and confirm the landing page renders both
-  trip cards and links work, then open `singapore-aug-2026/` (the live
-  test trip) and confirm: the page loads with no console errors, Firebase
-  sync still works, weather/map/drive-time still render, the new "reset to
-  auto" coords button and "Other…" currency input behave, and — hardest to
-  fake headlessly — the offline write queue actually queues a write while
-  devtools is set to offline, then sends it once back online. Both rounds'
-  verification was thorough on the static/syntactic side but nothing was
-  exercised in a real browser against real Firebase.
+- **Live-browser verification of rounds 16-18's changes** (see History
+  #16, #17, #18) — open the site root and confirm the landing page shows
+  both trips correctly grouped under "Current Trips" (neither has ended
+  yet as of when this was written) and that links work, then open
+  `singapore-aug-2026/` (the live test trip) and confirm: the page loads
+  with no console errors, Firebase sync still works, weather/map/
+  drive-time still render, the new "reset to auto" coords button and
+  "Other…" currency input behave, and — hardest to fake headlessly — the
+  offline write queue actually queues a write while devtools is set to
+  offline, then sends it once back online. All three rounds' verification
+  was thorough on the static/syntactic side but nothing was exercised in a
+  real browser against real Firebase.
 - Real verification pass before the Australia trip is actually real:
   confirm opening hours/closures for each stop via web search close to the
   trip date (per the standing project instruction), fill in actual
