@@ -426,6 +426,42 @@ giving up per-trip URLs.
   what the offline-cache render (which runs synchronously, early, on
   every page load) can reach — if in doubt, declare it early, right after
   `writeValue()`, rather than next to its point of use.
+- **Help tab.** A new "Help" tab (last in the tab bar) with plain-language,
+  non-technical write-ups of every feature on the page — aimed at someone
+  who isn't comfortable with apps generally (e.g. Gwen), not at a
+  developer. Deliberately avoids implementation language (no API/library
+  names) and is written as short "what you'll see / what to tap" blurbs,
+  grouped by tab. It's static content — no Firebase data, nothing to
+  sync, identical across every trip file — so it needed zero JS changes:
+  the tab-switching code (`document.querySelectorAll('.tab')...`) is
+  already generic, keyed off `data-panel` matching a panel's `id`, so
+  adding one more `<button data-panel="help">`/`<div id="help">` pair was
+  purely HTML/CSS. Excluded from the printed view (`#help` added to the
+  `@media print` hide-list) since "tap here" instructions make no sense
+  on paper — unlike every other panel, which prints deliberately (the
+  print CSS forces all panels to `display: block` at once so a paper
+  copy shows everything at once).
+- **Budget currency dropdown — closed list, not free text.** The
+  "Figures entered in" dropdown (see Currency conversion above) is a
+  fixed `<select>` of 14 hardcoded currencies (SGD, AUD, USD, EUR, GBP,
+  JPY, MYR, THB, IDR, PHP, NZD, CNY, KRW, HKD, INR) — there's no
+  free-text/"other" entry. If a trip's actual spending currency isn't in
+  that list, it can't be selected through the UI at all. If
+  `budgetCurrency` in Firebase somehow ends up set to a value outside
+  this list (e.g. a manual REST write, or a currency added to the list
+  later then removed), the native `<select>` just shows as blank/
+  unselected rather than erroring — HTML spec behavior for a `.value`
+  that matches no `<option>`. The FX conversion line degrades gracefully
+  too: `fetchFxRate()` already treats "no rate returned" as `null` and
+  the caller already blanks the line rather than showing broken text, so
+  an unsupported code just means no conversion line, not a crash. Budget
+  totals themselves are unaffected either way — they're plain numbers
+  with no currency validation, so tracking still works even if the
+  currency picker can't represent what you actually used. **Not yet
+  fixed** — flagged to the user (who's Singapore-based and may travel
+  somewhere like Vietnam/Laos/Cambodia, none of which are in the list);
+  worth expanding the hardcoded list or adding a free-text ISO-code
+  fallback if it comes up for a real trip.
 
 ## Known limitations (already communicated to the user — don't "fix" silently)
 
@@ -561,6 +597,16 @@ giving up per-trip URLs.
     repeating ~15 discrete edits twice more — verified byte-for-byte
     parity between engine and both trip files outside that spliced block,
     and `node --check` syntax validity on all three.
+15. User asked what happens if their actual currency isn't in the Budget
+    tab's dropdown, and asked for a Help tab explaining every feature in
+    plain language for someone not tech-savvy (Gwen). Answered the
+    currency question and documented it as a known limitation (see Known
+    limitations / Feature notes) rather than silently patching it, since
+    fixing it means a product decision (expand the fixed list vs. add
+    free-text entry) not yet made. Built the Help tab (see Feature
+    notes) — static, non-technical, no JS logic beyond the tab-switching
+    code already in place. Propagated to all three files the same
+    splice-from-engine way as round 14.
 
 ## Trips so far
 

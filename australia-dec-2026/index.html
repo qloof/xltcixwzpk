@@ -140,6 +140,12 @@
   .currency-select { font-family: var(--font-mono); font-size: 12px; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 4px 8px; }
   .fx-line { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-soft); margin-top: 10px; font-style: italic; }
 
+  .help-group-title { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brass); font-weight: 600; margin: 26px 0 10px; }
+  .help-group-title:first-child { margin-top: 0; }
+  .help-item { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 10px; }
+  .help-title { font-weight: 700; font-size: 14.5px; color: var(--ink); margin: 0 0 5px; }
+  .help-item p { margin: 0; font-size: 14px; color: var(--ink-soft); line-height: 1.55; }
+
   .contact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
   .contact-card .field-label { margin-top: 8px; }
   .contact-card .field-label:first-child { margin-top: 0; }
@@ -154,7 +160,7 @@
   .offline-banner.show { display: block; }
 
   @media print {
-    .tabs, .add-row, .remove-row, .tier-add, .toolbar, #mapView, .offline-banner, .share-panel { display: none !important; }
+    .tabs, .add-row, .remove-row, .tier-add, .toolbar, #mapView, .offline-banner, .share-panel, #help { display: none !important; }
     .panel { display: block !important; margin-top: 14px; }
     .card { break-inside: avoid; }
     body { background: #fff; }
@@ -202,6 +208,7 @@
     <button class="tab" data-panel="budget">Budget</button>
     <button class="tab" data-panel="contacts">Contacts</button>
     <button class="tab" data-panel="extras">Extras</button>
+    <button class="tab" data-panel="help">Help</button>
   </nav>
 
   <div class="panel active" id="itinerary">
@@ -299,6 +306,111 @@
       <p class="extra-note">Catch-all for anything trip-specific — dog, house-sitter, medication, whatever doesn't fit above.</p>
       <div id="extrasList"></div>
       <button class="add-row" id="addExtra">+ Add another item</button>
+    </section>
+  </div>
+
+  <div class="panel" id="help">
+    <section>
+      <h2>How this page works</h2>
+      <p class="section-hint">A plain-language guide to everything on this page. Nothing here changes when you tap around — it's just reference.</p>
+
+      <div class="help-group-title">The basics</div>
+      <div class="help-item">
+        <p class="help-title">Both of you can edit this at once</p>
+        <p>This isn't a document you email back and forth — it's one shared page. When either of you changes something, the other person sees it appear automatically, usually within a second or two, without needing to refresh.</p>
+      </div>
+      <div class="help-item">
+        <p class="help-title">How to edit a field</p>
+        <p>Tap directly on the text you want to change (a title, a note, a checklist item) and start typing. To save it, either press Enter/Return or just tap somewhere else on the screen. You'll see it flash a soft green for a moment — that's your confirmation it saved. If you don't see the flash, the edit may not have registered — try again.</p>
+      </div>
+      <div class="help-item">
+        <p class="help-title">"Your name" box (top of the page)</p>
+        <p>Type your name in here once. It's only used to label the "last edited by" note at the top, so you can both tell at a glance who made the most recent change. It doesn't create an account or log you in to anything.</p>
+      </div>
+      <div class="help-item">
+        <p class="help-title">The dot next to "Synced"</p>
+        <p>Teal/green means your changes have reached the shared copy and the other person can see them. If it says you're offline, an orange banner appears at the top — you can still look at everything, but new edits won't save until you're back online.</p>
+      </div>
+      <div class="help-item">
+        <p class="help-title">Add this page to your phone's home screen</p>
+        <p>Open this link in your phone's browser, then use the browser's "Add to Home Screen" option (in Safari: the Share button, then "Add to Home Screen"; in Chrome: the ⋮ menu, then "Add to Home screen"). It'll then open like a regular app icon — no app store install needed.</p>
+      </div>
+      <div class="help-item">
+        <p class="help-title">The badge under the trip title</p>
+        <p>Counts down the days until the trip starts. Once you're on the trip it switches to "Day 2 of 4" style, and afterwards it says the trip is complete — all worked out automatically from the dates in the Itinerary tab.</p>
+      </div>
+
+      <div class="help-group-title">Itinerary tab</div>
+      <div class="help-item">
+        <p class="help-title">Changing a stop's date</p>
+        <p>Tap the small date box on a card to change the day. The bold weekday and date shown above it update by themselves — you only ever need to touch the small box.</p>
+      </div>
+      <div class="help-item">
+        <p class="help-title">Typing in a location</p>
+        <p>Type a place name (a town, a landmark, an address — whatever you'd search for) into the Location field and tap away. The page looks it up and quietly fills in a "Navigate in Waze" link for that spot. If it can't find the place, a small note appears telling you so — tap "± coordinates" underneath to type in map coordinates by hand instead, if you have them.</p>
+      </div>
+      <div class="help-item">
+        <p class="help-title">Weather forecast</p>
+        <p>Shows up automatically on a card once that stop has a location (or coordinates) and its date is within about two weeks away. Further out than that, forecasts aren't reliable yet, so nothing shows.</p>
+      </div>
+      <div class="help-item">
+        <p class="help-title">Drive time to the next stop</p>
+        <p>Once a stop and the one after it both have a location filled in, the card shows roughly how long the drive is and how far, so you can sanity-check the day's plan.</p>
+      </div>
+      <div class="help-item">
+        <p class="help-title">Reordering stops on the same day</p>
+        <p>If you have two or more stops planned for the same date, small ▲/▼ arrows let you move one earlier or later in that day's running order. They only affect stops sharing that same date — they won't move a stop to a different day (change the date field for that).</p>
+      </div>
+      <div class="help-item">
+        <p class="help-title">Adding or removing a day</p>
+        <p>"+ Add another day" at the bottom adds a blank stop to fill in. "Remove" on a card deletes that stop — there's no undo, so double-check before tapping it.</p>
+      </div>
+
+      <div class="help-group-title">Map tab</div>
+      <div class="help-item">
+        <p class="help-title">What it shows</p>
+        <p>Every stop that has a location (or coordinates) filled in, plotted on a map and joined by a line in date order — a quick way to see the shape of the trip.</p>
+      </div>
+
+      <div class="help-group-title">Checklists tab</div>
+      <div class="help-item">
+        <p class="help-title">Six separate lists</p>
+        <p>4 weeks out, 2 weeks out, Longfen's packing, Gwen's packing, the day before, and on the road. Tap "+ add" under any list to add an item, tick the box as you get it done — ticked items get a line through them so it's obvious what's left.</p>
+      </div>
+
+      <div class="help-group-title">Budget tab</div>
+      <div class="help-item">
+        <p class="help-title">Entering figures</p>
+        <p>Fill in a budgeted and an actual amount for each category (Lodging, Transport, Food, Activities, Misc). The totals row at the bottom adds itself up — you never need to calculate it yourself.</p>
+      </div>
+      <div class="help-item">
+        <p class="help-title">"Figures entered in" dropdown</p>
+        <p>Tells the page what currency the numbers above are in. If you pick something other than SGD, a line appears underneath showing roughly what those totals are in SGD, using that day's exchange rate — useful for keeping a mental sense of the cost in home-currency terms, though it's a reference figure, not a precise conversion.</p>
+      </div>
+
+      <div class="help-group-title">Contacts and Extras tabs</div>
+      <div class="help-item">
+        <p class="help-title">Contacts</p>
+        <p>Phone numbers, booking references, or anything else you might need to look up quickly while on the road — one card per contact.</p>
+      </div>
+      <div class="help-item">
+        <p class="help-title">Extras</p>
+        <p>A catch-all for anything that doesn't fit elsewhere — pet-sitter instructions, medication reminders, whatever's specific to this trip.</p>
+      </div>
+
+      <div class="help-group-title">Sharing this page</div>
+      <div class="help-item">
+        <p class="help-title">The Share button (top right)</p>
+        <p>Shows a QR code and a "Copy link" button for this exact page, so you can quickly send it to someone else or scan it on another device.</p>
+      </div>
+      <div class="help-item">
+        <p class="help-title">Print / Save PDF</p>
+        <p>Turns the page into a clean, printable version (hides the tabs and buttons) if you'd like a paper copy or a PDF — your browser or phone's own print/save-as-PDF option handles the rest.</p>
+      </div>
+      <div class="help-item">
+        <p class="help-title">Anyone with this link can edit it</p>
+        <p>There's no password or login — whoever has this exact web address can view and change everything on it. Only share the link with people you'd trust to edit the trip.</p>
+      </div>
     </section>
   </div>
 
