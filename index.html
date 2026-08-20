@@ -507,14 +507,31 @@ function attachWeather(el, lat, lon, date) {
 // typed location name so the human doesn't need to look up or see raw
 // coordinates; the coords row stays hidden behind a toggle for the rare
 // case the auto-match is wrong (ambiguous place names) and needs fixing. ----
+// Nominatim (OpenStreetMap), not Open-Meteo's geocoder. Open-Meteo's
+// geocoding endpoint was tried first (round 3) because it's the same
+// keyless API already used for weather — but it turned out to be a
+// city/town-only gazetteer (GeoNames-based), not a landmark/address
+// geocoder. Confirmed broken in testing: "Gardens by the Bay" returned
+// zero results, and "Sentosa" matched an unrelated village in Central
+// Java, Indonesia instead of Sentosa Island. That's what "the coords
+// don't change" / "sometimes it works" actually was — not a timing bug,
+// the API silently failed or returned a wrong-country match for anything
+// that wasn't a plain city name. Nominatim is OSM's own search — it
+// indexes landmarks, POIs, and street addresses, which is what this field
+// is actually used for. Public instance, no API key, but has a real usage
+// policy (openstreetmap.org/copyright): max ~1 request/second, and it
+// wants a way to identify the calling app — satisfied here by the
+// browser's own Referer header, sent automatically, no extra code needed.
+// This app's usage (occasional interactive lookups, one person editing
+// one field at a time) is well within that.
 async function geocodeLocation(query) {
   try {
-    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=en&format=json`;
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=jsonv2&limit=1`;
     const res = await fetch(url);
     const json = await res.json();
-    const r = json?.results?.[0];
+    const r = json?.[0];
     if (!r) return null;
-    return { lat: r.latitude, lon: r.longitude };
+    return { lat: parseFloat(r.lat), lon: parseFloat(r.lon) };
   } catch (e) {
     return null;
   }
@@ -636,12 +653,21 @@ function renderItinerary(itinerary) {
     // keeping the old coordinates because *some* coords already existed.
     const locEl = card.querySelector('[data-f="location"]');
     locEl.textContent = day.location ?? '';
+    let geocodeSeq = 0;
     locEl.addEventListener('blur', () => {
       const text = locEl.textContent.trim();
       writeValue(`trips/${tripId}/itinerary/${key}/location`, text);
       if (!text || day.coordsManual) { showGeoFeedback(''); return; }
+      // Sequence guard: if the location gets edited again before this
+      // lookup returns (easy to do — this writes to Firebase and comes
+      // back over the network, not instant), an older/slower response
+      // could otherwise land after a newer one and overwrite it with
+      // stale coordinates. Only the most recently *fired* lookup is
+      // allowed to write its result.
+      const mySeq = ++geocodeSeq;
       showGeoFeedback('Locating…');
       geocodeLocation(text).then(geo => {
+        if (mySeq !== geocodeSeq) return;
         if (!geo) {
           showGeoFeedback('Couldn’t find that place — set coordinates manually via “± coordinates” below');
           return;

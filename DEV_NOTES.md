@@ -234,21 +234,50 @@ giving up per-trip URLs.
   input's `change` event.
 - **Location → coordinates (auto-geocode + Waze).** Raw lat/lon inputs are
   hidden by default behind a "± coordinates" toggle so the itinerary card
-  stays readable. Typing a location and clicking away (blur) calls the
-  Open-Meteo geocoding API (`geocodeLocation()`) and fills lat/lon
-  automatically, which also fills a "Navigate in Waze →" link
-  (`https://waze.com/ul?ll={lat},{lon}&navigate=yes`). If the lookup finds
-  nothing, a small amber line under the location field says so and points
-  at the manual toggle instead of failing silently. **This re-geocodes on
-  every location edit**, not just the first — earlier code only geocoded
-  when lat/lon were both still empty, which meant editing an already-seeded
-  card's location (e.g. changing "Sydney" to a Singapore address) silently
-  kept Sydney's coordinates and both the "coords not updating" and "Waze
-  opens but doesn't navigate anywhere sensible" symptoms the user hit were
-  this bug. Fixed by tracking a `coordsManual` flag instead of "are lat/lon
-  currently non-empty": location edits always re-geocode *unless* the human
-  has manually typed into lat/lon themselves, in which case their manual
-  pin is trusted and left alone.
+  stays readable. Typing a location and clicking away (blur) calls
+  `geocodeLocation()` and fills lat/lon automatically, which also fills a
+  "Navigate in Waze →" link (`https://waze.com/ul?ll={lat},{lon}&navigate=yes`).
+  If the lookup finds nothing, a small amber line under the location field
+  says so and points at the manual toggle instead of failing silently.
+  **This re-geocodes on every location edit**, not just the first — earlier
+  code only geocoded when lat/lon were both still empty, which meant
+  editing an already-seeded card's location silently kept the old
+  coordinates. Fixed by tracking a `coordsManual` flag instead of "are
+  lat/lon currently non-empty": location edits always re-geocode *unless*
+  the human has manually typed into lat/lon themselves, in which case
+  their manual pin is trusted and left alone.
+  **Geocoder swapped this round (was Open-Meteo, now Nominatim/OSM):**
+  the original geocoder used Open-Meteo's geocoding endpoint since it's
+  the same keyless API already used for weather. That was the wrong tool —
+  it's a city/town gazetteer (GeoNames-based), not a landmark/address
+  geocoder, and it was the actual cause of "sometimes it works, sometimes
+  it doesn't." Confirmed by direct testing: querying it for "Gardens by
+  the Bay" (a real Singapore landmark, and in this repo's own seed data)
+  returned zero results; querying "Sentosa" matched an unrelated village
+  in Central Java, Indonesia instead of Sentosa Island — a wrong-country
+  false positive with no error surfaced. Switched to Nominatim
+  (`nominatim.openstreetmap.org/search`), OSM's own search, which
+  indexes landmarks/POIs/addresses — what this field is actually used
+  for. Public instance, no API key, but has a real usage policy
+  (max ~1 req/sec, wants the app identified — satisfied by the browser's
+  automatic Referer header, no extra code needed); this app's usage
+  (occasional interactive lookups) is well within that. **Not verified
+  from this dev environment** — the sandbox's outbound network is
+  allowlisted and blocks Nominatim directly, and the web-fetch tool
+  respects Nominatim's robots.txt (which only applies to crawlers, not to
+  a real browser's `fetch()`, but it meant this round's fix could only be
+  verified by code review + confirming the API behavior via a differently
+  routed lookup, not by hitting the exact deployed code path end-to-end).
+  If a location still doesn't resolve after this, that's real signal —
+  check the actual API response for that query before assuming the code
+  regressed.
+  Also added: a per-card `geocodeSeq` sequence guard on the location blur
+  handler. The location-text write reaches Firebase (and re-renders the
+  card) well before a geocoding lookup over the network returns, so two
+  edits made in quick succession could have their lookups resolve
+  out of order — the guard makes sure only the most recently *fired*
+  lookup is allowed to write its result, so a slower/older response can't
+  clobber a newer one.
 - **Manual reordering (▲/▼).** Full drag-and-drop was considered and
   rejected: this is a phone-first app and native HTML5 drag doesn't work
   reliably on touch without an extra library, and — more fundamentally —
@@ -387,6 +416,19 @@ giving up per-trip URLs.
     under Checklists — see Feature notes). Propagated to all three files
     (engine, Australia, Singapore) with real starter items for the two
     live trips, not placeholders.
+12. This round: the user kept hitting "sometimes the coords update,
+    sometimes they don't" after round 7's geocode fix. Root cause turned
+    out to be one level deeper than round 7 fixed — round 7 fixed *when*
+    geocoding fires, but never verified the geocoding API itself actually
+    worked for real-world queries. It didn't: Open-Meteo's geocoder is a
+    city gazetteer, not a landmark/address geocoder, confirmed by testing
+    it directly against this repo's own seed data (see "Geocoder swapped"
+    under Feature notes). Swapped to Nominatim (OSM) and added a sequence
+    guard against out-of-order lookup responses. **Lesson for future
+    sessions:** when picking a free/keyless API for something specific
+    (landmark lookup, not weather), test it against real example queries
+    before building on it — don't assume a "geocoding" endpoint does
+    general-purpose geocoding just because of its name.
 
 ## Trips so far
 
