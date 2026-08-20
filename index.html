@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trip Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #16233F;
+    --ink-soft: #4A5872;
+    --paper: #FAF9F5;
+    --paper-dim: #F0EEE6;
+    --brass: #B8862F;
+    --brass-soft: #E8D9B8;
+    --teal: #2F6E63;
+    --line: #D9D5C7;
+    --card: #FFFFFF;
+    --radius: 2px;
+    --font-display: 'Fraunces', serif;
+    --font-body: 'IBM Plex Sans', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--paper-dim); color: var(--ink); font-family: var(--font-body); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 24px 20px 80px; }
+
+  .stub { background: var(--ink); color: var(--paper); border-radius: var(--radius); position: relative; display: grid; grid-template-columns: 1fr auto; overflow: hidden; }
+  .stub-main { padding: 28px 28px 22px; }
+  .stub-eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--brass-soft); margin: 0 0 10px; }
+  .stub-title { font-family: var(--font-display); font-weight: 600; font-size: clamp(28px, 5vw, 40px); margin: 0 0 6px; line-height: 1.05; }
+  .stub-title[contenteditable]:focus, [contenteditable]:focus { outline: 1px dashed var(--brass); outline-offset: 4px; }
+  .stub-sub { font-family: var(--font-mono); font-size: 13px; color: var(--paper-dim); opacity: 0.75; margin: 0; }
+  .stub-status { display: inline-block; margin-top: 14px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 10px; border: 1px solid var(--brass); color: var(--brass-soft); border-radius: 999px; }
+  .stub-ticket { border-left: 1px dashed rgba(250,249,245,0.35); padding: 28px 22px; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; text-align: right; min-width: 150px; position: relative; }
+  .stub-ticket::before, .stub-ticket::after { content: ""; position: absolute; width: 18px; height: 18px; background: var(--paper-dim); border-radius: 50%; left: -9px; }
+  .stub-ticket::before { top: -9px; }
+  .stub-ticket::after { bottom: -9px; }
+  .ticket-no { font-family: var(--font-mono); font-size: 12px; color: var(--brass-soft); letter-spacing: 0.06em; }
+  .ticket-days { font-family: var(--font-display); font-size: 34px; font-weight: 600; margin-top: 8px; }
+  .ticket-days-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--paper-dim); opacity: 0.7; }
+  @media (max-width: 560px) {
+    .stub { grid-template-columns: 1fr; }
+    .stub-ticket { border-left: none; border-top: 1px dashed rgba(250,249,245,0.35); flex-direction: row; align-items: center; text-align: left; }
+    .stub-ticket::before, .stub-ticket::after { left: auto; top: -9px; }
+    .stub-ticket::before { right: 20%; }
+    .stub-ticket::after { right: 20%; top: auto; bottom: -9px; }
+  }
+
+  .sync-status { font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); margin: 10px 2px 0; display: flex; align-items: center; gap: 6px; }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: #C9A227; }
+  .sync-dot.ok { background: var(--teal); }
+
+  .tabs { display: flex; gap: 2px; margin: 14px 0 0; background: var(--line); border-radius: var(--radius); padding: 2px; overflow-x: auto; }
+  .tab { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; background: transparent; border: none; padding: 10px 16px; color: var(--ink-soft); cursor: pointer; white-space: nowrap; border-radius: var(--radius); }
+  .tab.active { background: var(--card); color: var(--ink); font-weight: 600; }
+  .panel { display: none; margin-top: 20px; }
+  .panel.active { display: block; }
+  section h2 { font-family: var(--font-display); font-weight: 600; font-size: 20px; margin: 0 0 4px; }
+  .section-hint { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-soft); margin: 0 0 16px; }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 12px; }
+  .card-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 8px; }
+  .day-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brass); font-weight: 600; }
+  .day-date { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); }
+  .field { padding: 6px 0; border-bottom: 1px dotted var(--line); font-size: 14.5px; min-height: 20px; }
+  .field:last-child { border-bottom: none; }
+  .field-label { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); display: block; margin-bottom: 2px; }
+
+  .add-row { font-family: var(--font-mono); font-size: 12px; color: var(--brass); background: none; border: 1px dashed var(--brass); border-radius: var(--radius); padding: 8px 12px; cursor: pointer; width: 100%; text-align: left; margin-top: 4px; }
+  .add-row:hover { background: var(--brass-soft); }
+  .remove-row { font-family: var(--font-mono); font-size: 10.5px; color: #A8455A; background: none; border: none; cursor: pointer; padding: 6px 0 0; text-align: left; }
+
+  .tier { margin-bottom: 22px; }
+  .tier-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+  .tier-head-left { display: flex; align-items: center; gap: 10px; }
+  .tier-head .tag { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; background: var(--ink); color: var(--paper); padding: 3px 9px; border-radius: 999px; }
+  .tier-add { font-family: var(--font-mono); font-size: 11px; color: var(--brass); background: none; border: none; cursor: pointer; }
+  .check-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px dotted var(--line); }
+  .check-item:last-child { border-bottom: none; }
+  .check-item input[type="checkbox"] { margin-top: 3px; accent-color: var(--teal); width: 16px; height: 16px; flex-shrink: 0; }
+  .check-item span { font-size: 14.5px; outline: none; flex: 1; }
+  .check-item input:checked + span { text-decoration: line-through; color: var(--ink-soft); }
+  .check-item .remove-row { flex-shrink: 0; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; text-align: left; color: var(--ink-soft); padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  td { padding: 10px 10px; border-bottom: 1px dotted var(--line); }
+  td:not(:first-child), th:not(:first-child) { text-align: right; font-family: var(--font-mono); }
+  tr.total td { font-weight: 600; border-top: 2px solid var(--ink); border-bottom: none; font-family: var(--font-mono); }
+
+  .contact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .contact-card .field-label { margin-top: 8px; }
+  .contact-card .field-label:first-child { margin-top: 0; }
+
+  .extra-note { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); background: var(--brass-soft); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 16px; }
+  footer { margin-top: 40px; padding-top: 14px; border-top: 1px dashed var(--line); font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="stub">
+    <div class="stub-main">
+      <p class="stub-eyebrow">Road Trip Dashboard</p>
+      <h1 class="stub-title" id="title" contenteditable="true" spellcheck="false">[Trip Name]</h1>
+      <p class="stub-sub" id="subtitle" contenteditable="true" spellcheck="false">[Destination(s)] · [Start date] – [End date]</p>
+      <span class="stub-status">Status: Planning</span>
+    </div>
+    <div class="stub-ticket">
+      <div><div class="ticket-no" id="tripCode">TRIP · ------</div></div>
+      <div>
+        <div class="ticket-days" id="days" contenteditable="true" spellcheck="false">—</div>
+        <div class="ticket-days-label">days</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sync-status"><span class="sync-dot" id="syncDot"></span><span id="syncText">Connecting…</span></div>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-panel="itinerary">Itinerary</button>
+    <button class="tab" data-panel="checklists">Checklists</button>
+    <button class="tab" data-panel="budget">Budget</button>
+    <button class="tab" data-panel="contacts">Contacts</button>
+    <button class="tab" data-panel="extras">Extras</button>
+  </nav>
+
+  <div class="panel active" id="itinerary">
+    <section>
+      <h2>Day by day</h2>
+      <p class="section-hint">Edits sync live to anyone with this trip's link.</p>
+      <div id="itineraryList"></div>
+      <button class="add-row" id="addDay">+ Add another day</button>
+    </section>
+  </div>
+
+  <div class="panel" id="checklists">
+    <section>
+      <h2>Checklists</h2>
+      <p class="section-hint">Tick as you go — checks sync live for everyone on this trip.</p>
+
+      <div class="tier" data-tier="w4">
+        <div class="tier-head"><div class="tier-head-left"><span class="tag">4 weeks out</span></div><button class="tier-add">+ add</button></div>
+        <div class="tier-items" id="tier-w4"></div>
+      </div>
+      <div class="tier" data-tier="w2">
+        <div class="tier-head"><div class="tier-head-left"><span class="tag">2 weeks out</span></div><button class="tier-add">+ add</button></div>
+        <div class="tier-items" id="tier-w2"></div>
+      </div>
+      <div class="tier" data-tier="dayBefore">
+        <div class="tier-head"><div class="tier-head-left"><span class="tag">Day before</span></div><button class="tier-add">+ add</button></div>
+        <div class="tier-items" id="tier-dayBefore"></div>
+      </div>
+      <div class="tier" data-tier="onRoad">
+        <div class="tier-head"><div class="tier-head-left"><span class="tag">On the road</span></div><button class="tier-add">+ add</button></div>
+        <div class="tier-items" id="tier-onRoad"></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="panel" id="budget">
+    <section>
+      <h2>Budget tracker</h2>
+      <p class="section-hint">Totals are computed automatically from what's entered below.</p>
+      <table>
+        <thead><tr><th>Category</th><th>Budgeted</th><th>Actual</th></tr></thead>
+        <tbody id="budgetBody"></tbody>
+      </table>
+    </section>
+  </div>
+
+  <div class="panel" id="contacts">
+    <section>
+      <h2>Contacts &amp; confirmations</h2>
+      <p class="section-hint">One card per party you might need to reach or reference on the road.</p>
+      <div class="contact-grid" id="contactGrid"></div>
+      <button class="add-row" id="addContact">+ Add contact</button>
+    </section>
+  </div>
+
+  <div class="panel" id="extras">
+    <section>
+      <h2>Extras</h2>
+      <p class="extra-note">Catch-all for anything trip-specific — dog, house-sitter, medication, whatever doesn't fit above.</p>
+      <div id="extrasList"></div>
+      <button class="add-row" id="addExtra">+ Add another item</button>
+    </section>
+  </div>
+
+  <footer id="footerNote">Loading trip…</footer>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getDatabase, ref, onValue, set, push, child, get } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+
+/* ============================================================
+   REPLACE WITH YOUR OWN FIREBASE CONFIG
+   (Firebase console → Project settings → General → Your apps → the </> web app)
+   These values are meant to be public — Firebase security comes from
+   the database Rules, not from hiding this object.
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "AIzaSyCwmKdxRXjhGZXWdXlKx4trc9c6_OkPD7U",
+  authDomain: "trip-dashboard-c6f8a.firebaseapp.com",
+  databaseURL: "https://trip-dashboard-c6f8a-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "trip-dashboard-c6f8a",
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// ---- trip id lives in the URL (?trip=xxxxxx) so one deployed page can host many trips ----
+const params = new URLSearchParams(location.search);
+let tripId = params.get('trip');
+if (!tripId) {
+  tripId = Math.random().toString(36).slice(2, 8);
+  params.set('trip', tripId);
+  history.replaceState(null, '', `${location.pathname}?${params.toString()}`);
+}
+document.title = `Trip Dashboard — ${tripId}`;
+document.getElementById('tripCode').textContent = `TRIP · ${tripId}`;
+document.getElementById('footerNote').textContent =
+  `Trip code ${tripId} — share this exact URL (with ?trip=${tripId}) so it opens the same trip.`;
+
+const tripRef = ref(db, `trips/${tripId}`);
+
+const DEFAULT_STATE = {
+  meta: { title: '[Trip Name]', subtitle: '[Destination(s)] · [Start date] – [End date]', days: '—' },
+  itinerary: {},
+  checklists: { w4: {}, w2: {}, dayBefore: {}, onRoad: {} },
+  budget: {
+    lodging:    { label: 'Lodging',          budgeted: '', actual: '' },
+    transport:  { label: 'Transport / fuel', budgeted: '', actual: '' },
+    food:       { label: 'Food',             budgeted: '', actual: '' },
+    activities: { label: 'Activities',       budgeted: '', actual: '' },
+    misc:       { label: 'Misc / buffer',    budgeted: '', actual: '' },
+  },
+  contacts: {},
+  extras: {},
+};
+
+// seed a brand-new trip id with starter content, once
+get(tripRef).then(snap => {
+  if (snap.exists()) return;
+  const seeded = JSON.parse(JSON.stringify(DEFAULT_STATE));
+  const dayKey = push(child(tripRef, 'itinerary')).key;
+  seeded.itinerary[dayKey] = { date: '[date]', location: '[town / stop name]', plan: '[main activity, booking ref if any]', lodging: '[hotel / campsite, confirmation #]', alt: '' };
+  ['w4', 'w2', 'dayBefore', 'onRoad'].forEach(t => {
+    const k = push(child(tripRef, `checklists/${t}`)).key;
+    seeded.checklists[t][k] = { text: '[new checklist item]', checked: false };
+  });
+  const cKey = push(child(tripRef, 'contacts')).key;
+  seeded.contacts[cKey] = { name: '[e.g. Roadside assistance]', ref: '[number]' };
+  const eKey = push(child(tripRef, 'extras')).key;
+  seeded.extras[eKey] = { item: '[what needs tracking]', notes: '[details]' };
+  set(tripRef, seeded);
+});
+
+let firstSync = true;
+onValue(tripRef, snap => {
+  const data = snap.val() || DEFAULT_STATE;
+  document.getElementById('syncDot').classList.add('ok');
+  document.getElementById('syncText').textContent = firstSync ? 'Synced' : 'Synced · updated just now';
+  firstSync = false;
+
+  renderMeta(data.meta || DEFAULT_STATE.meta);
+  renderItinerary(data.itinerary || {});
+  renderChecklists(data.checklists || {});
+  renderBudget(data.budget || DEFAULT_STATE.budget);
+  renderContacts(data.contacts || {});
+  renderExtras(data.extras || {});
+}, err => {
+  document.getElementById('syncText').textContent = 'Sync error — check Firebase config/rules (see console)';
+  console.error(err);
+});
+
+// ---------- helpers ----------
+// Skip rebuilding a section while the user is actively focused inside it,
+// so their own typing/cursor never gets yanked out from under them.
+// The section will pick up the latest merged state as soon as they click away.
+function focusedInside(container) {
+  return container && container.contains(document.activeElement);
+}
+function commitOnBlur(el, writePath) {
+  el.addEventListener('blur', () => set(ref(db, writePath), el.textContent));
+}
+
+// ---------- META ----------
+function renderMeta(meta) {
+  const titleEl = document.getElementById('title');
+  const subEl = document.getElementById('subtitle');
+  const daysEl = document.getElementById('days');
+  if (document.activeElement !== titleEl) titleEl.textContent = meta.title ?? '';
+  if (document.activeElement !== subEl) subEl.textContent = meta.subtitle ?? '';
+  if (document.activeElement !== daysEl) daysEl.textContent = meta.days ?? '—';
+  titleEl.onblur = () => set(ref(db, `trips/${tripId}/meta/title`), titleEl.textContent);
+  subEl.onblur = () => set(ref(db, `trips/${tripId}/meta/subtitle`), subEl.textContent);
+  daysEl.onblur = () => set(ref(db, `trips/${tripId}/meta/days`), daysEl.textContent);
+}
+
+// ---------- ITINERARY ----------
+function renderItinerary(itinerary) {
+  const list = document.getElementById('itineraryList');
+  if (focusedInside(list)) return;
+  list.innerHTML = '';
+  Object.entries(itinerary).sort(([a], [b]) => (a < b ? -1 : 1)).forEach(([key, day], i) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="card-row">
+        <span class="day-label">Day ${i + 1}</span>
+        <span class="day-date" contenteditable="true" data-f="date"></span>
+      </div>
+      <div class="field"><span class="field-label">Location</span><span contenteditable="true" data-f="location"></span></div>
+      <div class="field"><span class="field-label">Plan</span><span contenteditable="true" data-f="plan"></span></div>
+      <div class="field"><span class="field-label">Lodging</span><span contenteditable="true" data-f="lodging"></span></div>
+      <div class="field"><span class="field-label">Alternate (weather / closure)</span><span contenteditable="true" data-f="alt"></span></div>
+      <button class="remove-row" data-remove>− Remove this day</button>`;
+    card.querySelectorAll('[data-f]').forEach(el => {
+      el.textContent = day[el.dataset.f] ?? '';
+      commitOnBlur(el, `trips/${tripId}/itinerary/${key}/${el.dataset.f}`);
+    });
+    card.querySelector('[data-remove]').onclick = () => set(ref(db, `trips/${tripId}/itinerary/${key}`), null);
+    list.appendChild(card);
+  });
+}
+document.getElementById('addDay').onclick = () => {
+  const key = push(child(tripRef, 'itinerary')).key;
+  set(ref(db, `trips/${tripId}/itinerary/${key}`), { date: '[date]', location: '', plan: '', lodging: '', alt: '' });
+};
+
+// ---------- CHECKLISTS ----------
+function renderChecklists(checklists) {
+  ['w4', 'w2', 'dayBefore', 'onRoad'].forEach(tier => {
+    const container = document.getElementById('tier-' + tier);
+    if (focusedInside(container)) return;
+    container.innerHTML = '';
+    const items = checklists[tier] || {};
+    Object.entries(items).sort(([a], [b]) => (a < b ? -1 : 1)).forEach(([key, item]) => {
+      const row = document.createElement('div');
+      row.className = 'check-item';
+      row.innerHTML = `<input type="checkbox"><span contenteditable="true"></span><button class="remove-row" data-remove>✕</button>`;
+      row.querySelector('input').checked = !!item.checked;
+      row.querySelector('span').textContent = item.text ?? '';
+      row.querySelector('input').onchange = e => set(ref(db, `trips/${tripId}/checklists/${tier}/${key}/checked`), e.target.checked);
+      commitOnBlur(row.querySelector('span'), `trips/${tripId}/checklists/${tier}/${key}/text`);
+      row.querySelector('[data-remove]').onclick = () => set(ref(db, `trips/${tripId}/checklists/${tier}/${key}`), null);
+      container.appendChild(row);
+    });
+  });
+}
+document.querySelectorAll('.tier-add').forEach(btn => {
+  btn.onclick = () => {
+    const tier = btn.closest('.tier').dataset.tier;
+    const key = push(child(tripRef, `checklists/${tier}`)).key;
+    set(ref(db, `trips/${tripId}/checklists/${tier}/${key}`), { text: '[new item]', checked: false });
+  };
+});
+
+// ---------- BUDGET ----------
+function renderBudget(budget) {
+  const body = document.getElementById('budgetBody');
+  if (focusedInside(body)) return;
+  body.innerHTML = '';
+  let totalB = 0, totalA = 0;
+  Object.entries(budget).forEach(([key, row]) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${row.label}</td><td contenteditable="true" data-f="budgeted"></td><td contenteditable="true" data-f="actual"></td>`;
+    tr.querySelectorAll('[data-f]').forEach(td => {
+      td.textContent = row[td.dataset.f] ?? '';
+      commitOnBlur(td, `trips/${tripId}/budget/${key}/${td.dataset.f}`);
+    });
+    totalB += Number(row.budgeted) || 0;
+    totalA += Number(row.actual) || 0;
+    body.appendChild(tr);
+  });
+  const totalRow = document.createElement('tr');
+  totalRow.className = 'total';
+  totalRow.innerHTML = `<td>Total</td><td>${totalB || '—'}</td><td>${totalA || '—'}</td>`;
+  body.appendChild(totalRow);
+}
+
+// ---------- CONTACTS ----------
+function renderContacts(contacts) {
+  const grid = document.getElementById('contactGrid');
+  if (focusedInside(grid)) return;
+  grid.innerHTML = '';
+  Object.entries(contacts).sort(([a], [b]) => (a < b ? -1 : 1)).forEach(([key, c]) => {
+    const card = document.createElement('div');
+    card.className = 'card contact-card';
+    card.innerHTML = `
+      <span class="field-label">Name</span>
+      <div contenteditable="true" data-f="name"></div>
+      <span class="field-label">Phone / ref</span>
+      <div contenteditable="true" data-f="ref"></div>
+      <button class="remove-row" data-remove>− Remove</button>`;
+    card.querySelectorAll('[data-f]').forEach(el => {
+      el.textContent = c[el.dataset.f] ?? '';
+      commitOnBlur(el, `trips/${tripId}/contacts/${key}/${el.dataset.f}`);
+    });
+    card.querySelector('[data-remove]').onclick = () => set(ref(db, `trips/${tripId}/contacts/${key}`), null);
+    grid.appendChild(card);
+  });
+}
+document.getElementById('addContact').onclick = () => {
+  const key = push(child(tripRef, 'contacts')).key;
+  set(ref(db, `trips/${tripId}/contacts/${key}`), { name: '[name]', ref: '[number / ref]' });
+};
+
+// ---------- EXTRAS ----------
+function renderExtras(extras) {
+  const list = document.getElementById('extrasList');
+  if (focusedInside(list)) return;
+  list.innerHTML = '';
+  Object.entries(extras).sort(([a], [b]) => (a < b ? -1 : 1)).forEach(([key, x]) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="field"><span class="field-label">Item</span><span contenteditable="true" data-f="item"></span></div>
+      <div class="field"><span class="field-label">Notes</span><span contenteditable="true" data-f="notes"></span></div>
+      <button class="remove-row" data-remove>− Remove</button>`;
+    card.querySelectorAll('[data-f]').forEach(el => {
+      el.textContent = x[el.dataset.f] ?? '';
+      commitOnBlur(el, `trips/${tripId}/extras/${key}/${el.dataset.f}`);
+    });
+    card.querySelector('[data-remove]').onclick = () => set(ref(db, `trips/${tripId}/extras/${key}`), null);
+    list.appendChild(card);
+  });
+}
+document.getElementById('addExtra').onclick = () => {
+  const key = push(child(tripRef, 'extras')).key;
+  set(ref(db, `trips/${tripId}/extras/${key}`), { item: '', notes: '' });
+};
+
+// ---------- TABS ----------
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.panel).classList.add('active');
+  });
+});
+</script>
+</body>
+</html>
