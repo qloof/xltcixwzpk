@@ -284,6 +284,15 @@ giving up per-trip URLs.
   inside that section (`focusedInside()` guard), so a remote edit elsewhere
   won't yank your cursor mid-type. It also means you won't *see* a remote
   update to a section you're actively editing until you click away.
+  **Fixed this round:** `focusedInside()` originally treated ANY focused
+  element inside the section as "editing," including buttons — so tapping
+  "Remove" or a ▲/▼ reorder button left focus sitting on that button, and
+  the re-render triggered by the button's own write was silently skipped.
+  The write itself succeeded (Firebase had the new data), but nothing
+  visibly moved until a full page reload — indistinguishable from "the
+  button doesn't work." Now `focusedInside()` only counts text inputs,
+  textareas, and contenteditable elements as "editing"; a focused button
+  no longer blocks the render it just caused.
 - Weather only works within ~16 days of the date, and only for days with
   lat/lon filled in.
 - No offline *write* queueing — the offline cache is read-only fallback
@@ -352,6 +361,15 @@ giving up per-trip URLs.
    buttons against real dates and a real location instead of a hypothetical.
    Flagged in its own subtitle as test/draft content, same convention as
    the Australia trip.
+
+10. This round: fixed the `focusedInside()` guard treating a focused button
+    (right after tapping Remove or ▲/▼) as "actively editing" — see the
+    correction under Known limitations. Found via live testing on the new
+    Singapore trip: reordering wrote the correct data but didn't visibly
+    move anything without a full reload. Applied to all three deployed
+    files (engine, Australia, Singapore) — this one couldn't wait for the
+    next "propagate to trip files" pass since it broke a feature on a trip
+    already in someone's hands.
 
 ## Trips so far
 

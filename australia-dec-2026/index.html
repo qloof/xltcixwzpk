@@ -417,8 +417,19 @@ function renderAll(data) {
   renderExtras(data.extras || {});
 }
 
+// Only counts as "actively editing" (and therefore worth protecting from a
+// remote re-render stealing focus/cursor) if the focused element is
+// something you type into — a text input, contenteditable span, etc.
+// A focused BUTTON doesn't qualify: right after tapping "Remove" or a
+// ▲/▼ reorder button, the browser leaves focus sitting on that button,
+// which is still inside the guarded container. Treating that as "editing"
+// meant the re-render triggered by the button's own write got silently
+// skipped — the underlying data changed correctly, but nothing visibly
+// moved until the next full page load. That was the bug.
 function focusedInside(container) {
-  return container && container.contains(document.activeElement);
+  const el = document.activeElement;
+  if (!container || !el || !container.contains(el)) return false;
+  return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable;
 }
 function commitOnBlur(el, writePath) {
   el.addEventListener('blur', () => writeValue(writePath, el.textContent));
