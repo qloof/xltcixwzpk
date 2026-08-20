@@ -25,6 +25,11 @@ restyle from scratch on future changes.
   modules, loaded straight from CDN (Firebase SDK, Leaflet). Keep it that
   way — this is a "minor project" per the user, and adding a build pipeline
   would be a net loss for something this size.
+- **All shared rendering/sync logic lives in one file: `app.js`** (repo
+  root), imported as an ES module by every trip's `index.html`. This used
+  to be a full byte-for-byte copy of the JS pasted into every trip file —
+  see "Why the engine used to be duplicated per trip" below for why that
+  was extracted and what changed.
 - **Local git clone lives inside Google Drive on purpose**:
   `X:\My Drive\Claude\Trip Dashboard\trip-dashboard\`. This was explicitly
   requested by the user after being warned that Drive-syncing a live `.git`
@@ -61,9 +66,8 @@ restyle from scratch on future changes.
                 toggle). While false, every edit to `location` re-geocodes
                 and silently overwrites lat/lon. Once true, location edits
                 stop touching lat/lon — the human's manual pin is trusted.
-                There's currently no UI to flip this back to false short of
-                manually re-editing lat/lon back to blank; see Known
-                limitations.
+                A "↺ reset to auto" button appears once this is true, to
+                flip it back and re-geocode immediately (see Feature notes).
     plan, lodging, alt   free text
   checklists/{w4|w2|packingLongfen|packingGwen|dayBefore|onRoad}/{pushKey}/
     text, checked
@@ -113,15 +117,21 @@ trip-dashboard/                    (repo root)
 │                                   was the original proof-of-concept
 │                                   (tripId was random ?trip=xxxxxx once,
 │                                   since replaced — see History below)
+├── app.js                          the shared engine — see below
 ├── manifest.json, icon.svg, sw.js  shared PWA assets (icon + service worker
 │                                   are genuinely shared across all trips;
 │                                   manifest.json is duplicated per-folder
 │                                   on purpose — see PWA notes below)
+├── scripts/
+│   ├── new-trip.mjs                 scaffolds a new trip folder — see
+│   │                                 "To start a new real trip" below
+│   └── new-trip.example.json        starter seed you copy/fill in for a
+│                                     new trip and pass to new-trip.mjs
 ├── .gitignore                      repo-root level, not per-subfolder
 └── <trip-slug>/
-    ├── index.html                  that trip's dashboard, copied from the
-    │                                engine template with TRIP_ID/TRIP_LABEL/
-    │                                TRIP_SEED filled in
+    ├── index.html                  that trip's dashboard — a thin shell
+    │                                (HTML/CSS + an initTripDashboard()
+    │                                call) that imports app.js
     └── manifest.json                per-trip copy (see below)
 ```
 
@@ -129,47 +139,60 @@ Live URL: `https://qloof.github.io/trip-dashboard/<trip-slug>/`
 
 ### To start a new real trip
 
-1. Copy the engine template — the canonical source is
-   `/trip-dashboard/index.html` at repo root, OR ask Claude to regenerate
-   from this file's structure (all the render/weather/map logic is
-   duplicated per-file by design, see "Why duplicated, not shared" below).
-2. In the new file's `<script type="module">`, set:
-   - `TRIP_ID` — must equal the folder name (e.g. `'summer-2026'`)
-   - `TRIP_LABEL` — short display string for the ticket stub
-   - `TRIP_SEED` — an object matching the shape in `GENERIC_SEED` in the
-     engine file, with real (or draft) itinerary days, checklist items,
-     contacts, budget line items. **Itinerary day `date` fields must be ISO
-     `yyyy-mm-dd` strings.** Add `lat`/`lon` for any stop you want weather
-     + map support on (plain decimal degrees, e.g. Sydney Opera House is
-     `-33.8568, 151.2153`).
-3. Update `<title>` and the `<link rel="manifest">`/`<link rel="icon">`
-   paths to match (icon can stay pointed at the shared
-   `/trip-dashboard/icon.svg`; manifest should be a **new small file in the
-   trip's own folder**, not the shared root one — see PWA notes).
-4. Create a `manifest.json` in the new trip folder (copy
-   `<trip-slug>/manifest.json` pattern from `australia-dec-2026/manifest.json`,
-   change `name`/`short_name`).
-5. `git add`, commit, push from the local clone
-   (`X:\My Drive\Claude\Trip Dashboard\trip-dashboard\`). GitHub Pages
-   redeploys automatically in ~1-2 min.
-6. Open the new URL once to trigger the seed-on-first-load (see below),
+1. Write a seed file describing the trip — copy
+   `scripts/new-trip.example.json` and fill it in: itinerary days (ISO
+   `yyyy-mm-dd` dates, `lat`/`lon` in plain decimal degrees for any stop
+   you want weather/map/drive-time support on, e.g. Sydney Opera House is
+   `-33.8568, 151.2153`), checklists, contacts, budget line items.
+2. Run `node scripts/new-trip.mjs <slug> <label> <path-to-seed.json>` from
+   the repo root (`X:\My Drive\Claude\Trip Dashboard\trip-dashboard\`) —
+   `<slug>` becomes both the folder name and the Firebase tripId (they must
+   match), `<label>` is the short ticket-stub label. This creates
+   `<slug>/index.html` and `<slug>/manifest.json` for you, reading the
+   *live* engine file (repo-root `index.html`) as its template so the
+   scaffolded trip always matches whatever the dashboard actually looks
+   like — see the script's own header comment.
+3. `git add`, commit, push from the local clone. GitHub Pages redeploys
+   automatically in ~1-2 min.
+4. Open the new URL once to trigger the seed-on-first-load (see below),
    confirm "Synced" status, confirm the seeded content looks right.
 
-### Why the engine is duplicated per trip, not shared as one file
+(Steps 1-2 replace what used to be five manual steps — copy the engine
+file, hand-edit TRIP_ID/TRIP_LABEL/TRIP_SEED, update `<title>`, write a
+manifest.json by hand, keep the folder name and TRIP_ID in sync yourself.
+See "Why the engine used to be duplicated per trip" below.)
 
-Considered and rejected: a single shared `index.html` reading `tripId` from
-a URL query param (`?trip=xxxxxx`) so one file serves every trip. That's
-what the very first version did (see History). The user explicitly asked
-to switch to "one index.html per subfolder" with a real, readable per-trip
-URL instead of a random code — it reads better and each trip is a
-self-contained file you can hand off/archive independently. The tradeoff is
-that a change to the shared rendering logic (e.g. a bug fix) has to be
-copied into every trip's file by hand (or scripted) rather than being one
-change in one place. Given this is a low-traffic personal project with at
-most a handful of trips a year, that tradeoff was accepted. If this ever
-grows to many trips, revisit — a shared `/trip-dashboard/app.js` imported
-by every trip's thin `index.html` would remove the duplication without
-giving up per-trip URLs.
+### Why the engine used to be duplicated per trip (fixed — see `app.js`)
+
+Considered and rejected, early on: a single shared `index.html` reading
+`tripId` from a URL query param (`?trip=xxxxxx`) so one file serves every
+trip. That's what the very first version did (see History). The user
+explicitly asked to switch to "one index.html per subfolder" with a real,
+readable per-trip URL instead of a random code — it reads better and each
+trip is a self-contained file you can hand off/archive independently.
+
+The tradeoff, for a long time, was that every trip's `index.html` carried a
+full byte-for-byte copy of the render/sync JS (~800 lines), so a bug fix or
+new feature had to be hand-applied to every trip file. History entries #10,
+#11, #12, #13, #14, #15 below all ended with "propagated to all three
+files" as a separate, error-prone step. That's now fixed **without giving
+up per-trip URLs**: all shared logic moved into one file, `app.js` (repo
+root), which every trip's `index.html` imports as an ES module —
+`import { initTripDashboard } from '../app.js'` from a trip subfolder, or
+`'./app.js'` from the root engine file itself. Each trip's `index.html` is
+now just its HTML/CSS shell plus one `initTripDashboard({ tripId,
+tripLabel, tripSeed })` call — see `index.html` at repo root for the
+canonical shell.
+
+A few small pieces of markup/CSS added *after* this extraction (the update
+toast, the budget "Other…" currency input) are injected by `app.js` itself
+at init time (`injectStyles()`/`ensureUpdateToast()`/
+`ensureCurrencyOtherInput()`) rather than hand-edited into all three HTML
+files — so genuinely everything about how the dashboard behaves and mostly
+how it looks lives in one file now. The itinerary card's own markup (the
+"reset to auto" coords button, see Feature notes) needed no such injection
+since that card was already built as an HTML template string inside
+`renderItinerary()` in `app.js`, not static HTML.
 
 ## Feature notes (added in the "let's do all of it" round)
 
@@ -426,6 +449,46 @@ giving up per-trip URLs.
   what the offline-cache render (which runs synchronously, early, on
   every page load) can reach — if in doubt, declare it early, right after
   `writeValue()`, rather than next to its point of use.
+- **Coordinates "reset to auto" button.** Once `coordsManual` is set true
+  on an itinerary day (see Data model), a small "↺ reset to auto" button
+  appears next to "± coordinates" (reuses the `.coords-toggle` CSS class,
+  no new styling needed). Clicking it writes `coordsManual: false` and
+  immediately re-runs `geocodeLocation()` against the card's current
+  location text, updating lat/lon (and the Waze link) right away rather
+  than just flipping the flag and leaving stale coordinates sitting there
+  until the next location edit. Fixes the gap noted in Known limitations —
+  previously the only way back to auto-geocoding was manually clearing/
+  re-typing lat/lon, which itself re-set `coordsManual` back to true.
+- **Offline write queue.** Previously "no offline write queueing" was a
+  known limitation — the Firebase RTDB client does hold writes in memory
+  and send them once reconnected, but only for the life of the current
+  page load; closing the tab/app while offline (a real scenario on an
+  actual drive with spotty signal) lost anything still pending. Every
+  write now goes through `dbSet()`/`writeValue()` in `app.js`, which checks
+  `isOnline` (tracked via Firebase's own `.info/connected` ref, not
+  `navigator.onLine` — the latter can read `true` on a dead/captive-portal
+  connection) and either sends immediately or appends to a
+  localStorage-persisted queue (`trip-queue-{tripId}`) keyed by Firebase
+  path, replacing any earlier queued write to the same path so re-editing
+  a field repeatedly offline doesn't grow the queue unboundedly. The queue
+  flushes automatically the moment `.info/connected` flips true. If the
+  page reloads while still offline, `applyQueuedPatches()` overlays the
+  pending writes onto the cached snapshot before the offline-first render,
+  so you see your own unsent edits instead of stale pre-edit data. The
+  offline banner text now reports how many edits are waiting, and the old
+  6-second-timeout heuristic for showing/hiding that banner was replaced
+  by the same `.info/connected` listener — a strictly more accurate signal
+  than a fixed timer.
+- **"Someone else just edited this" toast.** A small pill (`#updateToast`,
+  injected by `app.js`, top-center, fades after ~3.5s) appears when a
+  remote sync brings in a change made by someone other than you (compared
+  by the "editing as" name — see "Last edited by" above), skipping your
+  own writes syncing back to you and skipping the very first sync on page
+  load. This is trip-wide, not truly per-field — a genuine per-field audit
+  trail would need a data-model change (each field would need its own
+  `lastEditedBy`/`lastEditedAt`, not just one pair on `meta`), which felt
+  like more complexity than this warranted. It reuses the same
+  `meta/lastEditedBy`/`meta/lastEditedAt` stamps every write already makes.
 - **Help tab.** A new "Help" tab (last in the tab bar) with plain-language,
   non-technical write-ups of every feature on the page — aimed at someone
   who isn't comfortable with apps generally (e.g. Gwen), not at a
@@ -441,27 +504,24 @@ giving up per-trip URLs.
   on paper — unlike every other panel, which prints deliberately (the
   print CSS forces all panels to `display: block` at once so a paper
   copy shows everything at once).
-- **Budget currency dropdown — closed list, not free text.** The
-  "Figures entered in" dropdown (see Currency conversion above) is a
-  fixed `<select>` of 14 hardcoded currencies (SGD, AUD, USD, EUR, GBP,
-  JPY, MYR, THB, IDR, PHP, NZD, CNY, KRW, HKD, INR) — there's no
-  free-text/"other" entry. If a trip's actual spending currency isn't in
-  that list, it can't be selected through the UI at all. If
-  `budgetCurrency` in Firebase somehow ends up set to a value outside
-  this list (e.g. a manual REST write, or a currency added to the list
-  later then removed), the native `<select>` just shows as blank/
-  unselected rather than erroring — HTML spec behavior for a `.value`
-  that matches no `<option>`. The FX conversion line degrades gracefully
-  too: `fetchFxRate()` already treats "no rate returned" as `null` and
-  the caller already blanks the line rather than showing broken text, so
-  an unsupported code just means no conversion line, not a crash. Budget
-  totals themselves are unaffected either way — they're plain numbers
-  with no currency validation, so tracking still works even if the
-  currency picker can't represent what you actually used. **Not yet
-  fixed** — flagged to the user (who's Singapore-based and may travel
-  somewhere like Vietnam/Laos/Cambodia, none of which are in the list);
-  worth expanding the hardcoded list or adding a free-text ISO-code
-  fallback if it comes up for a real trip.
+- **Budget currency dropdown — closed list, plus a free-text fallback
+  (fixed).** The "Figures entered in" dropdown (see Currency conversion
+  above) is still a fixed `<select>` of 14 hardcoded currencies (SGD, AUD,
+  USD, EUR, GBP, JPY, MYR, THB, IDR, PHP, NZD, CNY, KRW, HKD, INR), but now
+  has an "Other…" option at the bottom. Picking it reveals a small 3-letter
+  text input (`ensureCurrencyOtherInput()` in `app.js`, injected next to
+  the `<select>` rather than hand-added to all three HTML files — see
+  "Why the engine used to be duplicated" above) that writes whatever code
+  you type straight to `budgetCurrency`. `renderBudget()` now checks
+  `FIXED_CURRENCIES.includes(budgetCurrency)` to decide whether to show the
+  dropdown's matching option or flip to "Other…" with the input populated —
+  this also fixes the old "shows blank/unselected" case for any
+  out-of-list value already sitting in Firebase. The FX conversion line
+  degrades the same way as before: `fetchFxRate()` treats "no rate
+  returned" as `null`, so a code Frankfurter doesn't recognize (plausible
+  for something like VND/LAK/KHR) just means no conversion line, not an
+  error — budget totals themselves are unaffected either way since they're
+  plain numbers with no currency validation.
 
 ## Known limitations (already communicated to the user — don't "fix" silently)
 
@@ -484,14 +544,10 @@ giving up per-trip URLs.
   no longer blocks the render it just caused.
 - Weather only works within ~16 days of the date, and only for days with
   lat/lon filled in.
-- No offline *write* queueing — the offline cache is read-only fallback
-  for viewing; edits made while offline are not currently queued and
-  replayed once reconnected (worth adding if it becomes a real pain point).
-- Once `coordsManual` is set true on a day (by editing lat/lon by hand),
-  there's no button to un-pin it back to auto-geocoding — the only way is
-  to manually clear/re-edit the lat/lon fields (which sets coordsManual
-  true again, not back to false). Worth adding an explicit "reset to
-  auto" control if manual pins turn out to need frequent correcting.
+- The offline write queue (see Feature notes) is localStorage-based, not a
+  server-side queue — it survives a closed tab/app on the *same device*,
+  but two people editing conflicting fields while both offline still
+  resolves as last-write-wins once both reconnect, same as the online case.
 
 ## History (why things are the way they are)
 
@@ -607,6 +663,28 @@ giving up per-trip URLs.
     notes) — static, non-technical, no JS logic beyond the tab-switching
     code already in place. Propagated to all three files the same
     splice-from-engine way as round 14.
+16. User asked for suggestions/QoL improvements, then asked to implement
+    all of them (except expense splitting and auth, both previously
+    rejected by design). Extracted the shared engine into `app.js` (see
+    "Why the engine used to be duplicated per trip" above) — the biggest
+    structural change to this project since round 5's per-trip-folder
+    switch — and built the offline write queue, the coords "reset to
+    auto" button, the budget currency free-text fallback, and the
+    "someone else just edited this" toast on top of it (see Feature
+    notes for each). Also wrote `scripts/new-trip.mjs` to scaffold a new
+    trip from a seed JSON file instead of five manual steps. Verification
+    this round was unusually thorough given the size of the change:
+    `node --check` on `app.js` and on the extracted module script in all
+    three HTML files; a diff-based cross-check confirming every itinerary
+    coordinate and budget figure survived the rewrite byte-for-byte; a
+    dry run of `new-trip.mjs` against a throwaway trip folder (checked
+    then deleted); and a full DOM-id cross-reference between every
+    `getElementById()` call in `app.js` and what's actually in the static
+    HTML. **Not verified in an actual browser** — Claude in Chrome wasn't
+    connected this session, so nothing here has been exercised against
+    real Firebase sync, the offline queue's actual online/offline
+    transition, or the new toast/reset-coords/currency-other UI by hand.
+    Do that before trusting this fully; see "Still open" below.
 
 ## Trips so far
 
@@ -616,16 +694,20 @@ giving up per-trip URLs.
 
 ## Still open / natural next steps
 
+- **Live-browser verification of round 16's changes** (see History #16) —
+  open `singapore-aug-2026/` (the live test trip) on a real device/browser
+  and confirm: the page loads with no console errors, Firebase sync still
+  works, weather/map/drive-time still render, the new "reset to auto"
+  coords button and "Other…" currency input behave, and — hardest to fake
+  headlessly — the offline write queue actually queues a write while
+  devtools is set to offline, then sends it once back online. This round's
+  verification was thorough on the static/syntactic side (see History #16)
+  but nothing was exercised in a real browser against real Firebase.
 - Real verification pass before the Australia trip is actually real:
   confirm opening hours/closures for each stop via web search close to the
   trip date (per the standing project instruction), fill in actual
   hotel/car-rental bookings and confirmation numbers, replace all `[TBD]`
   placeholders.
-- Consider extracting the shared JS into one `/trip-dashboard/app.js` if
-  the number of trips grows enough that per-file duplication becomes
-  painful to maintain (see "Why duplicated" above).
-- Offline write queueing, if spotty signal on an actual drive turns out to
-  be a real problem in practice rather than a theoretical one.
 - No UI yet to un-share / revoke a share link — the QR/share panel just
   surfaces the existing (unauthed) URL, it doesn't add any new access
   control. Consistent with the existing "anyone with the link" trust
@@ -640,6 +722,3 @@ giving up per-trip URLs.
   against current Australian visa requirements for a Singapore passport.
   Confirm the correct visa product via a real search before the user
   relies on it (visa rules/names do change).
-- Budget currency dropdown is a closed list of 14 currencies with no
-  free-text fallback (see Feature notes) — revisit if a real trip needs
-  a currency not on the list (flagged, not yet actioned).

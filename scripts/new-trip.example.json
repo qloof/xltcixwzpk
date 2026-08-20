@@ -1,0 +1,31 @@
+{
+  "meta": {
+    "title": "[Trip Name]",
+    "subtitle": "[Destination(s)] · [Start date] – [End date]",
+    "days": "—"
+  },
+  "itineraryDays": [
+    { "date": "", "location": "[town / stop name]", "lat": "", "lon": "", "plan": "[main activity, booking ref if any]", "lodging": "[hotel / campsite, confirmation #]", "alt": "" }
+  ],
+  "checklists": {
+    "w4": ["[e.g. confirm time off work]", "[e.g. book primary lodging]"],
+    "w2": ["[e.g. arrange pet/house sitter]", "[e.g. verify opening hours for planned stops]"],
+    "packingLongfen": ["[e.g. passport / ID]", "[e.g. chargers + adapter]", "[e.g. weather-appropriate clothing]"],
+    "packingGwen": ["[e.g. passport / ID]", "[e.g. chargers + adapter]", "[e.g. weather-appropriate clothing]"],
+    "dayBefore": ["[e.g. charge devices]", "[e.g. re-check weather + closures]"],
+    "onRoad": ["[e.g. daily check-in with home]"]
+  },
+  "contacts": [
+    { "name": "[e.g. Roadside assistance]", "ref": "[number]" }
+  ],
+  "budget": {
+    "lodging":    { "label": "Lodging",          "budgeted": "", "actual": "" },
+    "transport":  { "label": "Transport / fuel", "budgeted": "", "actual": "" },
+    "food":       { "label": "Food",             "budgeted": "", "actual": "" },
+    "activities": { "label": "Activities",       "budgeted": "", "actual": "" },
+    "misc":       { "label": "Misc / buffer",    "budgeted": "", "actual": "" }
+  },
+  "extras": [
+    { "item": "[what needs tracking]", "notes": "[details]" }
+  ]
+}
