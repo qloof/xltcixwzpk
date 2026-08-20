@@ -342,6 +342,22 @@ giving up per-trip URLs.
    is why the user saw the round-7 Waze fix appear not to work even though
    it had deployed correctly — see the "v2 correction" note under PWA in
    Feature notes for the full story.
+9. Second trip added: `singapore-aug-2026/` — a deliberate **live test**,
+   not a real planned trip. 4 days starting the day it was created, real
+   Singapore landmarks with real lat/lon seeded in (Gardens by the Bay,
+   Sentosa, Chinatown/Little India, East Coast Park), specifically so the
+   user could open it on their phone the same day and exercise weather
+   (finally within the ~16-day forecast window, unlike the Australia draft
+   which is months out), geocoding, the Waze fix, and the new reorder
+   buttons against real dates and a real location instead of a hypothetical.
+   Flagged in its own subtitle as test/draft content, same convention as
+   the Australia trip.
+
+## Trips so far
+
+- `australia-dec-2026/` — draft, not booked/verified (see History #4).
+- `singapore-aug-2026/` — live test trip, not a real planned trip (History
+  #9). Fine to delete/repurpose once it's served its testing purpose.
 
 ## Still open / natural next steps
 
