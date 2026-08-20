@@ -50,6 +50,16 @@ restyle from scratch on future changes.
     location    free text
     lat, lon    optional numbers — power weather + the map marker. Blank is
                 fine; UI degrades gracefully (no weather line, no map pin).
+                Auto-filled by geocoding the `location` text (see Feature
+                notes) unless coordsManual is true.
+    coordsManual  boolean, default false. True once a human has manually
+                typed into the lat/lon fields (via the "± coordinates"
+                toggle). While false, every edit to `location` re-geocodes
+                and silently overwrites lat/lon. Once true, location edits
+                stop touching lat/lon — the human's manual pin is trusted.
+                There's currently no UI to flip this back to false short of
+                manually re-editing lat/lon back to blank; see Known
+                limitations.
     plan, lodging, alt   free text
   checklists/{w4|w2|dayBefore|onRoad}/{pushKey}/
     text, checked
@@ -192,6 +202,30 @@ giving up per-trip URLs.
   panel to `display: block` at once) and hides buttons/toolbar/map so it
   reads as a clean paper itinerary. No separate PDF library — relies on the
   browser's own print-to-PDF.
+- **Itinerary date display.** Each card shows the day's date stacked two
+  ways: a bold full weekday name ("Tuesday") on top, a numeric `d/m/yyyy`
+  date ("8/12/2026") underneath — both derived live from the same ISO
+  `date` field via `formatWeekday()`/`formatNumericDate()`. The actual
+  `<input type="date">` used to edit the date stays present underneath
+  (small, muted) — the stacked display is read-only, driven off the same
+  input's `change` event.
+- **Location → coordinates (auto-geocode + Waze).** Raw lat/lon inputs are
+  hidden by default behind a "± coordinates" toggle so the itinerary card
+  stays readable. Typing a location and clicking away (blur) calls the
+  Open-Meteo geocoding API (`geocodeLocation()`) and fills lat/lon
+  automatically, which also fills a "Navigate in Waze →" link
+  (`https://waze.com/ul?ll={lat},{lon}&navigate=yes`). If the lookup finds
+  nothing, a small amber line under the location field says so and points
+  at the manual toggle instead of failing silently. **This re-geocodes on
+  every location edit**, not just the first — earlier code only geocoded
+  when lat/lon were both still empty, which meant editing an already-seeded
+  card's location (e.g. changing "Sydney" to a Singapore address) silently
+  kept Sydney's coordinates and both the "coords not updating" and "Waze
+  opens but doesn't navigate anywhere sensible" symptoms the user hit were
+  this bug. Fixed by tracking a `coordsManual` flag instead of "are lat/lon
+  currently non-empty": location edits always re-geocode *unless* the human
+  has manually typed into lat/lon themselves, in which case their manual
+  pin is trusted and left alone.
 - **"Last edited by."** A small text input in the toolbar, stored in
   `localStorage` only (`trip-editor-name`) — not per-user auth, just a
   courtesy label. Every field write goes through a central `writeValue()`
@@ -217,6 +251,11 @@ giving up per-trip URLs.
 - No offline *write* queueing — the offline cache is read-only fallback
   for viewing; edits made while offline are not currently queued and
   replayed once reconnected (worth adding if it becomes a real pain point).
+- Once `coordsManual` is set true on a day (by editing lat/lon by hand),
+  there's no button to un-pin it back to auto-geocoding — the only way is
+  to manually clear/re-edit the lat/lon fields (which sets coordsManual
+  true again, not back to false). Worth adding an explicit "reset to
+  auto" control if manual pins turn out to need frequent correcting.
 
 ## History (why things are the way they are)
 
@@ -250,6 +289,14 @@ giving up per-trip URLs.
    free text to ISO, added `lat`/`lon`) and the old seed had already been
    written on first load — safe to do because it was explicitly disclosed
    as throwaway draft content, not a real trip yet.
+7. This round: reworked the itinerary card's date to show a stacked
+   weekday-name/numeric-date display, and fixed a real bug in the
+   location→coordinates auto-geocode flow (was gated on "lat/lon currently
+   empty," which silently kept stale coordinates — and a stale/wrong-country
+   Waze link — when editing an already-seeded card's location; now gated on
+   an explicit `coordsManual` flag instead). Both changes were made in the
+   engine template first, then propagated to `australia-dec-2026/index.html`
+   the same way as always.
 
 ## Still open / natural next steps
 
@@ -263,33 +310,3 @@ giving up per-trip URLs.
   painful to maintain (see "Why duplicated" above).
 - Offline write queueing, if spotty signal on an actual drive turns out to
   be a real problem in practice rather than a theoretical one.
-
-## Round 3: itinerary card UX (geocoding, Waze, layout)
-
-- **Day above Date.** `.card-row` changed from a horizontal flex row to a
-  stacked column — the "Stop N" label (+ Today tag) now sits above the
-  date input rather than beside it. Pure CSS change, no data model impact.
-- **Coordinates are hidden by default now, and mostly auto-filled.**
-  Raw lat/lon inputs used to always show on every itinerary card — the
-  user asked whether that was necessary, and it wasn't: humans don't need
-  to see decimal coordinates day-to-day, they're just plumbing for
-  weather/map/navigation. Two changes:
-  1. The coords row is now hidden behind a small "± coordinates" toggle
-     button per card (manual override still fully available, just not
-     shown by default).
-  2. When the `location` text field is edited and lat/lon are still empty,
-     `geocodeLocation()` (Open-Meteo's free geocoding API, no key) resolves
-     the typed place name to coordinates automatically in the background
-     and writes them silently. If the auto-match is wrong (ambiguous place
-     names — "Sydney" could resolve outside Australia, etc.), open the
-     toggle and correct the lat/lon by hand; it won't be overwritten again
-     once non-empty. Geocoding only fires when lat/lon are both blank, so
-     it never fights a manual correction.
-- **Waze handoff.** Each card has a "Navigate in Waze →" link
-  (`https://waze.com/ul?ll={lat},{lon}&navigate=yes`, Waze's universal
-  link format — opens the Waze app if installed, falls back to
-  web/store otherwise) that only appears once lat/lon are present
-  (auto-geocoded or manual). This was the actual justification for keeping
-  coordinates in the data model at all rather than dropping them — they
-  now power three features (weather, map, one-tap Waze navigation), not
-  just one.

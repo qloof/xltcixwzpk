@@ -79,7 +79,10 @@
   .day-label-group { display: flex; align-items: center; gap: 8px; }
   .day-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brass); font-weight: 600; }
   .today-tag { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; background: var(--brass); color: var(--paper); padding: 2px 7px; border-radius: 999px; }
-  .day-date-input { font-family: var(--font-mono); font-size: 12px; color: var(--ink); background: var(--paper-dim); border: 1px solid var(--line); border-radius: var(--radius); padding: 4px 6px; }
+  .date-display { margin: 2px 0; }
+  .date-weekday { font-family: var(--font-mono); font-weight: 700; font-size: 14px; color: var(--ink); text-transform: uppercase; letter-spacing: 0.04em; }
+  .date-numeric { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-soft); margin-top: 1px; }
+  .day-date-input { font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); background: var(--paper-dim); border: 1px solid var(--line); border-radius: var(--radius); padding: 3px 6px; margin-top: 4px; }
   .field { padding: 6px 0; border-bottom: 1px dotted var(--line); font-size: 14.5px; min-height: 20px; }
   .field:last-child { border-bottom: none; }
   .field-label { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); display: block; margin-bottom: 2px; }
@@ -93,6 +96,8 @@
   .coords-row input:focus { outline: 1px dashed var(--brass); outline-offset: 2px; }
   .weather-line { font-family: var(--font-mono); font-size: 12px; color: var(--teal); margin-top: 6px; }
   .weather-line.muted { color: var(--ink-soft); font-style: italic; }
+  .geocode-feedback { font-family: var(--font-mono); font-size: 11px; color: var(--brass); margin: 4px 0 0; display: none; }
+  .geocode-feedback.show { display: block; }
 
   .add-row { font-family: var(--font-mono); font-size: 12px; color: var(--brass); background: none; border: 1px dashed var(--brass); border-radius: var(--radius); padding: 8px 12px; cursor: pointer; width: 100%; text-align: left; margin-top: 4px; }
   .add-row:hover { background: var(--brass-soft); }
@@ -415,6 +420,20 @@ function formatDate(iso) {
   if (isNaN(d)) return iso;
   return d.toLocaleDateString('en-SG', { weekday: 'short', day: 'numeric', month: 'short' });
 }
+// Full weekday name ("Tuesday") for the itinerary card's stacked date display.
+function formatWeekday(iso) {
+  if (!iso) return 'No date set';
+  const d = new Date(iso + 'T00:00:00');
+  if (isNaN(d)) return '';
+  return d.toLocaleDateString('en-SG', { weekday: 'long' });
+}
+// d/m/yyyy, no leading zeros — matches the numeric line under the weekday.
+function formatNumericDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso + 'T00:00:00');
+  if (isNaN(d)) return iso;
+  return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+}
 
 // ---- weather (Open-Meteo, no API key; only returns data within ~16 days of today) ----
 const weatherCache = new Map();
@@ -496,9 +515,14 @@ function renderItinerary(itinerary) {
           <span class="day-label">Stop ${i + 1}</span>
           ${isToday ? '<span class="today-tag">Today</span>' : ''}
         </div>
+        <div class="date-display">
+          <div class="date-weekday" data-weekday></div>
+          <div class="date-numeric" data-numeric></div>
+        </div>
         <input class="day-date-input" type="date" data-f="date">
       </div>
       <div class="field"><span class="field-label">Location</span><span contenteditable="true" data-f="location"></span></div>
+      <div class="geocode-feedback" data-geocode-feedback></div>
       <div class="card-links">
         <button class="coords-toggle" type="button" data-toggle-coords>± coordinates</button>
         <a class="nav-link" data-waze target="_blank" rel="noopener" style="display:none;">Navigate in Waze →</a>
@@ -517,6 +541,9 @@ function renderItinerary(itinerary) {
     const latInput = card.querySelector('[data-f="lat"]');
     const lonInput = card.querySelector('[data-f="lon"]');
     const wazeLink = card.querySelector('[data-waze]');
+    const weekdayEl = card.querySelector('[data-weekday]');
+    const numericEl = card.querySelector('[data-numeric]');
+    const geoFeedback = card.querySelector('[data-geocode-feedback]');
     function updateWazeLink() {
       const lat = latInput.value, lon = lonInput.value;
       if (lat && lon) {
@@ -526,27 +553,49 @@ function renderItinerary(itinerary) {
         wazeLink.style.display = 'none';
       }
     }
+    function updateDateDisplay(iso) {
+      weekdayEl.textContent = formatWeekday(iso);
+      numericEl.textContent = formatNumericDate(iso);
+    }
+    function showGeoFeedback(msg) {
+      geoFeedback.textContent = msg;
+      geoFeedback.classList.toggle('show', !!msg);
+    }
 
-    card.querySelector('[data-f="date"]').value = day.date ?? '';
-    card.querySelector('[data-f="date"]').addEventListener('change', e => writeValue(`trips/${tripId}/itinerary/${key}/date`, e.target.value));
+    const dateInput = card.querySelector('[data-f="date"]');
+    dateInput.value = day.date ?? '';
+    updateDateDisplay(day.date);
+    dateInput.addEventListener('change', e => {
+      writeValue(`trips/${tripId}/itinerary/${key}/date`, e.target.value);
+      updateDateDisplay(e.target.value);
+    });
 
+    // Coordinates are auto-resolved from the typed location text every time
+    // it changes, UNLESS the human has manually edited the lat/lon fields
+    // (tracked via the persisted `coordsManual` flag below) — that's what
+    // makes editing a seeded card's location (e.g. Sydney -> a Singapore
+    // address) actually move the pin and the Waze link, instead of silently
+    // keeping the old coordinates because *some* coords already existed.
     const locEl = card.querySelector('[data-f="location"]');
     locEl.textContent = day.location ?? '';
     locEl.addEventListener('blur', () => {
       const text = locEl.textContent.trim();
       writeValue(`trips/${tripId}/itinerary/${key}/location`, text);
-      const hasCoords = latInput.value !== '' && lonInput.value !== '';
-      if (text && !hasCoords) {
-        geocodeLocation(text).then(geo => {
-          if (!geo) return;
-          latInput.value = geo.lat;
-          lonInput.value = geo.lon;
-          updateWazeLink();
-          writeValue(`trips/${tripId}/itinerary/${key}/lat`, geo.lat);
-          writeValue(`trips/${tripId}/itinerary/${key}/lon`, geo.lon);
-          attachWeather(card.querySelector('[data-weather]'), geo.lat, geo.lon, day.date);
-        });
-      }
+      if (!text || day.coordsManual) { showGeoFeedback(''); return; }
+      showGeoFeedback('Locating…');
+      geocodeLocation(text).then(geo => {
+        if (!geo) {
+          showGeoFeedback('Couldn’t find that place — set coordinates manually via “± coordinates” below');
+          return;
+        }
+        showGeoFeedback('');
+        latInput.value = geo.lat;
+        lonInput.value = geo.lon;
+        updateWazeLink();
+        writeValue(`trips/${tripId}/itinerary/${key}/lat`, geo.lat);
+        writeValue(`trips/${tripId}/itinerary/${key}/lon`, geo.lon);
+        attachWeather(card.querySelector('[data-weather]'), geo.lat, geo.lon, day.date);
+      });
     });
 
     card.querySelectorAll('span[data-f]:not([data-f="location"])').forEach(el => {
@@ -555,7 +604,13 @@ function renderItinerary(itinerary) {
     });
     card.querySelectorAll('input[type="number"][data-f]').forEach(el => {
       el.value = day[el.dataset.f] ?? '';
-      el.addEventListener('blur', () => { writeValue(`trips/${tripId}/itinerary/${key}/${el.dataset.f}`, el.value); updateWazeLink(); });
+      el.addEventListener('blur', () => {
+        writeValue(`trips/${tripId}/itinerary/${key}/${el.dataset.f}`, el.value);
+        // A manual coordinate edit pins the location, so future location-text
+        // edits stop auto-overwriting it — see the geocode note above.
+        writeValue(`trips/${tripId}/itinerary/${key}/coordsManual`, true);
+        updateWazeLink();
+      });
     });
     card.querySelector('[data-toggle-coords]').onclick = () => card.querySelector('.coords-row').classList.toggle('hidden');
     card.querySelector('[data-remove]').onclick = () => set(ref(db, `trips/${tripId}/itinerary/${key}`), null);
@@ -569,7 +624,7 @@ function renderItinerary(itinerary) {
 }
 document.getElementById('addDay').onclick = () => {
   const key = push(child(tripRef, 'itinerary')).key;
-  writeValue(`trips/${tripId}/itinerary/${key}`, { date: '', location: '', lat: '', lon: '', plan: '', lodging: '', alt: '' });
+  writeValue(`trips/${tripId}/itinerary/${key}`, { date: '', location: '', lat: '', lon: '', plan: '', lodging: '', alt: '', coordsManual: false });
 };
 
 // ---- map ----
