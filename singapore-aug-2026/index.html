@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#16233F">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="/trip-dashboard/icon.svg">
+<title>Singapore Staycation — Aug 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root {
+    --ink: #16233F;
+    --ink-soft: #4A5872;
+    --paper: #FAF9F5;
+    --paper-dim: #F0EEE6;
+    --brass: #B8862F;
+    --brass-soft: #E8D9B8;
+    --teal: #2F6E63;
+    --line: #D9D5C7;
+    --card: #FFFFFF;
+    --radius: 2px;
+    --font-display: 'Fraunces', serif;
+    --font-body: 'IBM Plex Sans', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--paper-dim); color: var(--ink); font-family: var(--font-body); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 24px 20px 80px; }
+
+  .stub { background: var(--ink); color: var(--paper); border-radius: var(--radius); position: relative; display: grid; grid-template-columns: 1fr auto; overflow: hidden; }
+  .stub-main { padding: 28px 28px 22px; }
+  .stub-eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--brass-soft); margin: 0 0 10px; }
+  .stub-title { font-family: var(--font-display); font-weight: 600; font-size: clamp(28px, 5vw, 40px); margin: 0 0 6px; line-height: 1.05; }
+  .stub-title[contenteditable]:focus, [contenteditable]:focus { outline: 1px dashed var(--brass); outline-offset: 4px; }
+  .stub-sub { font-family: var(--font-mono); font-size: 13px; color: var(--paper-dim); opacity: 0.75; margin: 0; }
+  .stub-status { display: inline-block; margin-top: 14px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 10px; border: 1px solid var(--brass); color: var(--brass-soft); border-radius: 999px; }
+  .stub-ticket { border-left: 1px dashed rgba(250,249,245,0.35); padding: 28px 22px; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; text-align: right; min-width: 150px; position: relative; }
+  .stub-ticket::before, .stub-ticket::after { content: ""; position: absolute; width: 18px; height: 18px; background: var(--paper-dim); border-radius: 50%; left: -9px; }
+  .stub-ticket::before { top: -9px; }
+  .stub-ticket::after { bottom: -9px; }
+  .ticket-no { font-family: var(--font-mono); font-size: 12px; color: var(--brass-soft); letter-spacing: 0.06em; }
+  .ticket-days { font-family: var(--font-display); font-size: 34px; font-weight: 600; margin-top: 8px; }
+  .ticket-days-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--paper-dim); opacity: 0.7; }
+  @media (max-width: 560px) {
+    .stub { grid-template-columns: 1fr; }
+    .stub-ticket { border-left: none; border-top: 1px dashed rgba(250,249,245,0.35); flex-direction: row; align-items: center; text-align: left; }
+    .stub-ticket::before, .stub-ticket::after { left: auto; top: -9px; }
+    .stub-ticket::before { right: 20%; }
+    .stub-ticket::after { right: 20%; top: auto; bottom: -9px; }
+  }
+
+  .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 10px 2px 0; flex-wrap: wrap; }
+  .sync-status { font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); display: flex; align-items: center; gap: 6px; }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: #C9A227; }
+  .sync-dot.ok { background: var(--teal); }
+  .sync-dot.offline { background: #A8455A; }
+  .toolbar-right { display: flex; align-items: center; gap: 10px; }
+  .name-input { font-family: var(--font-mono); font-size: 11px; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 4px 8px; width: 120px; }
+  .print-btn { font-family: var(--font-mono); font-size: 11px; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 5px 10px; cursor: pointer; }
+  .print-btn:hover { background: var(--brass-soft); }
+
+  .tabs { display: flex; gap: 2px; margin: 14px 0 0; background: var(--line); border-radius: var(--radius); padding: 2px; overflow-x: auto; }
+  .tab { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; background: transparent; border: none; padding: 10px 16px; color: var(--ink-soft); cursor: pointer; white-space: nowrap; border-radius: var(--radius); }
+  .tab.active { background: var(--card); color: var(--ink); font-weight: 600; }
+  .panel { display: none; margin-top: 20px; }
+  .panel.active { display: block; }
+  section h2 { font-family: var(--font-display); font-weight: 600; font-size: 20px; margin: 0 0 4px; }
+  .section-hint { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-soft); margin: 0 0 16px; }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 12px; }
+  .card.is-today { border-color: var(--brass); box-shadow: 0 0 0 1px var(--brass); }
+  .card-row { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-bottom: 8px; }
+  .day-label-group { display: flex; align-items: center; gap: 8px; }
+  .day-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brass); font-weight: 600; }
+  .today-tag { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; background: var(--brass); color: var(--paper); padding: 2px 7px; border-radius: 999px; }
+  .move-btns { display: flex; gap: 3px; margin-left: 4px; }
+  .move-btn { font-family: var(--font-mono); font-size: 10px; color: var(--ink-soft); background: none; border: 1px solid var(--line); border-radius: var(--radius); cursor: pointer; padding: 1px 6px; line-height: 1.5; }
+  .move-btn:hover:not(:disabled) { background: var(--paper-dim); color: var(--ink); border-color: var(--brass); }
+  .move-btn:disabled { opacity: 0.25; cursor: default; }
+  .date-display { margin: 2px 0; }
+  .date-weekday { font-family: var(--font-mono); font-weight: 700; font-size: 14px; color: var(--ink); text-transform: uppercase; letter-spacing: 0.04em; }
+  .date-numeric { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-soft); margin-top: 1px; }
+  .day-date-input { font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); background: var(--paper-dim); border: 1px solid var(--line); border-radius: var(--radius); padding: 3px 6px; margin-top: 4px; }
+  .field { padding: 6px 0; border-bottom: 1px dotted var(--line); font-size: 14.5px; min-height: 20px; }
+  .field:last-child { border-bottom: none; }
+  .field-label { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); display: block; margin-bottom: 2px; }
+  .card-links { display: flex; align-items: center; gap: 14px; padding: 6px 0; flex-wrap: wrap; }
+  .coords-toggle { font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); background: none; border: none; cursor: pointer; padding: 0; text-decoration: underline dotted; }
+  .nav-link { font-family: var(--font-mono); font-size: 11px; color: var(--teal); text-decoration: none; font-weight: 600; }
+  .nav-link:hover { text-decoration: underline; }
+  .coords-row { display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px dotted var(--line); }
+  .coords-row.hidden { display: none; }
+  .coords-row input { font-family: var(--font-mono); font-size: 13px; color: var(--ink); border: none; border-bottom: 1px dotted transparent; background: transparent; width: 90px; padding: 2px 0; }
+  .coords-row input:focus { outline: 1px dashed var(--brass); outline-offset: 2px; }
+  .weather-line { font-family: var(--font-mono); font-size: 12px; color: var(--teal); margin-top: 6px; }
+  .weather-line.muted { color: var(--ink-soft); font-style: italic; }
+  .geocode-feedback { font-family: var(--font-mono); font-size: 11px; color: var(--brass); margin: 4px 0 0; display: none; }
+  .geocode-feedback.show { display: block; }
+
+  .add-row { font-family: var(--font-mono); font-size: 12px; color: var(--brass); background: none; border: 1px dashed var(--brass); border-radius: var(--radius); padding: 8px 12px; cursor: pointer; width: 100%; text-align: left; margin-top: 4px; }
+  .add-row:hover { background: var(--brass-soft); }
+  .remove-row { font-family: var(--font-mono); font-size: 10.5px; color: #A8455A; background: none; border: none; cursor: pointer; padding: 6px 0 0; text-align: left; }
+
+  .tier { margin-bottom: 22px; }
+  .tier-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+  .tier-head-left { display: flex; align-items: center; gap: 10px; }
+  .tier-head .tag { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; background: var(--ink); color: var(--paper); padding: 3px 9px; border-radius: 999px; }
+  .tier-add { font-family: var(--font-mono); font-size: 11px; color: var(--brass); background: none; border: none; cursor: pointer; }
+  .check-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px dotted var(--line); }
+  .check-item:last-child { border-bottom: none; }
+  .check-item input[type="checkbox"] { margin-top: 3px; accent-color: var(--teal); width: 16px; height: 16px; flex-shrink: 0; }
+  .check-item span { font-size: 14.5px; outline: none; flex: 1; }
+  .check-item input:checked + span { text-decoration: line-through; color: var(--ink-soft); }
+  .check-item .remove-row { flex-shrink: 0; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; text-align: left; color: var(--ink-soft); padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  td { padding: 10px 10px; border-bottom: 1px dotted var(--line); }
+  td:not(:first-child), th:not(:first-child) { text-align: right; font-family: var(--font-mono); }
+  tr.total td { font-weight: 600; border-top: 2px solid var(--ink); border-bottom: none; font-family: var(--font-mono); }
+
+  .contact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .contact-card .field-label { margin-top: 8px; }
+  .contact-card .field-label:first-child { margin-top: 0; }
+
+  .extra-note { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); background: var(--brass-soft); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 16px; }
+  footer { margin-top: 40px; padding-top: 14px; border-top: 1px dashed var(--line); font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); text-align: center; }
+
+  #mapView { height: 360px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); }
+  .leaflet-popup-content { font-family: var(--font-body); font-size: 13px; }
+
+  .offline-banner { display: none; font-family: var(--font-mono); font-size: 11.5px; color: #7A3B10; background: #F3DCC0; border: 1px solid #D9A15C; border-radius: var(--radius); padding: 8px 12px; margin-top: 10px; }
+  .offline-banner.show { display: block; }
+
+  @media print {
+    .tabs, .add-row, .remove-row, .tier-add, .toolbar, #mapView, .offline-banner { display: none !important; }
+    .panel { display: block !important; margin-top: 14px; }
+    .card { break-inside: avoid; }
+    body { background: #fff; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="stub">
+    <div class="stub-main">
+      <p class="stub-eyebrow">Road Trip Dashboard</p>
+      <h1 class="stub-title" id="title" contenteditable="true" spellcheck="false">[Trip Name]</h1>
+      <p class="stub-sub" id="subtitle" contenteditable="true" spellcheck="false">[Destination(s)] · [Start date] – [End date]</p>
+      <span class="stub-status">Status: Planning</span>
+    </div>
+    <div class="stub-ticket">
+      <div><div class="ticket-no" id="tripCode">TRIP · ------</div></div>
+      <div>
+        <div class="ticket-days" id="days" contenteditable="true" spellcheck="false">—</div>
+        <div class="ticket-days-label">days</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="sync-status"><span class="sync-dot" id="syncDot"></span><span id="syncText">Connecting…</span></div>
+    <div class="toolbar-right">
+      <input class="name-input" id="editorName" type="text" placeholder="Editing as…" spellcheck="false">
+      <button class="print-btn" id="printBtn">Print / Save PDF</button>
+    </div>
+  </div>
+  <div class="offline-banner" id="offlineBanner">Showing last synced copy — no connection right now. Edits won't save until you're back online.</div>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-panel="itinerary">Itinerary</button>
+    <button class="tab" data-panel="map">Map</button>
+    <button class="tab" data-panel="checklists">Checklists</button>
+    <button class="tab" data-panel="budget">Budget</button>
+    <button class="tab" data-panel="contacts">Contacts</button>
+    <button class="tab" data-panel="extras">Extras</button>
+  </nav>
+
+  <div class="panel active" id="itinerary">
+    <section>
+      <h2>Day by day</h2>
+      <p class="section-hint">Add coordinates to a stop to see its weather forecast (shows up once you're within ~2 weeks of the date) and to plot it on the Map tab. Edits sync live to anyone with this link.</p>
+      <div id="itineraryList"></div>
+      <button class="add-row" id="addDay">+ Add another day</button>
+    </section>
+  </div>
+
+  <div class="panel" id="map">
+    <section>
+      <h2>Route map</h2>
+      <p class="section-hint">Plots every itinerary day that has coordinates filled in, in date order.</p>
+      <div id="mapView"></div>
+    </section>
+  </div>
+
+  <div class="panel" id="checklists">
+    <section>
+      <h2>Checklists</h2>
+      <p class="section-hint">Tick as you go — checks sync live for everyone on this trip.</p>
+      <div class="tier" data-tier="w4">
+        <div class="tier-head"><div class="tier-head-left"><span class="tag">4 weeks out</span></div><button class="tier-add">+ add</button></div>
+        <div class="tier-items" id="tier-w4"></div>
+      </div>
+      <div class="tier" data-tier="w2">
+        <div class="tier-head"><div class="tier-head-left"><span class="tag">2 weeks out</span></div><button class="tier-add">+ add</button></div>
+        <div class="tier-items" id="tier-w2"></div>
+      </div>
+      <div class="tier" data-tier="dayBefore">
+        <div class="tier-head"><div class="tier-head-left"><span class="tag">Day before</span></div><button class="tier-add">+ add</button></div>
+        <div class="tier-items" id="tier-dayBefore"></div>
+      </div>
+      <div class="tier" data-tier="onRoad">
+        <div class="tier-head"><div class="tier-head-left"><span class="tag">On the road</span></div><button class="tier-add">+ add</button></div>
+        <div class="tier-items" id="tier-onRoad"></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="panel" id="budget">
+    <section>
+      <h2>Budget tracker</h2>
+      <p class="section-hint">Totals are computed automatically from what's entered below.</p>
+      <table>
+        <thead><tr><th>Category</th><th>Budgeted</th><th>Actual</th></tr></thead>
+        <tbody id="budgetBody"></tbody>
+      </table>
+    </section>
+  </div>
+
+  <div class="panel" id="contacts">
+    <section>
+      <h2>Contacts &amp; confirmations</h2>
+      <p class="section-hint">One card per party you might need to reach or reference on the road.</p>
+      <div class="contact-grid" id="contactGrid"></div>
+      <button class="add-row" id="addContact">+ Add contact</button>
+    </section>
+  </div>
+
+  <div class="panel" id="extras">
+    <section>
+      <h2>Extras</h2>
+      <p class="extra-note">Catch-all for anything trip-specific — dog, house-sitter, medication, whatever doesn't fit above.</p>
+      <div id="extrasList"></div>
+      <button class="add-row" id="addExtra">+ Add another item</button>
+    </section>
+  </div>
+
+  <footer id="footerNote">Loading trip…</footer>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getDatabase, ref, onValue, set, push, child, get } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCwmKdxRXjhGZXWdXlKx4trc9c6_OkPD7U",
+  authDomain: "trip-dashboard-c6f8a.firebaseapp.com",
+  databaseURL: "https://trip-dashboard-c6f8a-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "trip-dashboard-c6f8a",
+};
+
+// ============================================================
+// PER-TRIP SETTINGS — the only two things a new trip file needs
+// to change (plus TRIP_SEED below) when copied from this engine.
+// ============================================================
+const TRIP_ID = 'singapore-aug-2026';
+const TRIP_LABEL = 'SG · AUG 2026';
+const TRIP_SEED = {
+  meta: {
+    title: 'Singapore Staycation — Test Run',
+    subtitle: 'Marina Bay → Sentosa → Chinatown/Little India → East Coast Park · Aug 20–23, 2026 (live test — real dates, draft content)',
+    days: '4',
+  },
+  itineraryDays: [
+    {
+      date: '2026-08-20', location: 'Gardens by the Bay', lat: 1.2816, lon: 103.8636,
+      plan: 'Supertree Grove, Cloud Forest + Flower Dome, Marina Bay waterfront walk for the evening light show',
+      lodging: '[test data — no lodging booked, this is a local staycation]',
+      alt: 'If rain: ArtScience Museum or the Shoppes at Marina Bay Sands (both indoor/covered)',
+      coordsManual: false, order: 0,
+    },
+    {
+      date: '2026-08-21', location: 'Sentosa Island', lat: 1.2494, lon: 103.8303,
+      plan: 'Cable car over, Siloso Beach, pick one of S.E.A. Aquarium / Universal Studios, Wings of Time show at night',
+      lodging: '',
+      alt: 'If rain: S.E.A. Aquarium (indoor) instead of beach time',
+      coordsManual: false, order: 0,
+    },
+    {
+      date: '2026-08-22', location: 'Chinatown, Singapore', lat: 1.2809, lon: 103.8443,
+      plan: 'Buddha Tooth Relic Temple, Chinatown Food Street, then MRT to Little India for Tekka Centre + Sri Veeramakaliamman Temple',
+      lodging: '',
+      alt: 'Both areas are mostly covered walkways/hawker centres — low rain risk either way',
+      coordsManual: false, order: 0,
+    },
+    {
+      date: '2026-08-23', location: 'East Coast Park', lat: 1.3006, lon: 103.9126,
+      plan: 'Morning cycling/walk along the park, seafood lunch, afternoon on Orchard Road, sunset at Merlion Park to wrap up',
+      lodging: '',
+      alt: 'If rain: skip cycling, head straight to the Orchard Road malls',
+      coordsManual: false, order: 0,
+    },
+  ],
+  checklists: {
+    w4: [
+      'Book Wings of Time / aquarium tickets online to skip the queue',
+    ],
+    w2: [
+      'Check the weather forecast for the week',
+      'Charge power bank, download offline maps for Sentosa/Chinatown',
+    ],
+    dayBefore: [
+      'Charge devices, pack sunscreen + comfortable shoes',
+      'Re-check Sentosa cable car operating hours',
+    ],
+    onRoad: [
+      'Track daily spend against budget',
+      'Note any closures/queue times worth remembering for next time',
+    ],
+  },
+  contacts: [
+    { name: 'Sentosa Guest Relations', ref: '[TBD]' },
+    { name: 'Emergency (Police / Ambulance)', ref: '999 / 995' },
+  ],
+  budget: {
+    lodging:    { label: 'Lodging',          budgeted: '0',   actual: '' },
+    transport:  { label: 'Transport / fuel', budgeted: '60',  actual: '' },
+    food:       { label: 'Food',             budgeted: '200', actual: '' },
+    activities: { label: 'Activities',       budgeted: '150', actual: '' },
+    misc:       { label: 'Misc / buffer',    budgeted: '50',  actual: '' },
+  },
+  extras: [
+    { item: 'EZ-Link / transit card top-up', notes: 'Top up before Day 1' },
+  ],
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const tripId = TRIP_ID;
+document.getElementById('tripCode').textContent = `TRIP · ${TRIP_LABEL}`;
+document.getElementById('footerNote').textContent = `Trip: ${tripId} — this link is dedicated to this trip; share it as-is.`;
+
+const tripRef = ref(db, `trips/${tripId}`);
+const CACHE_KEY = `trip-cache-${tripId}`;
+
+const GENERIC_SEED = {
+  meta: { title: '[Trip Name]', subtitle: '[Destination(s)] · [Start date] – [End date]', days: '—' },
+  itineraryDays: [
+    { date: '', location: '[town / stop name]', lat: '', lon: '', plan: '[main activity, booking ref if any]', lodging: '[hotel / campsite, confirmation #]', alt: '' },
+  ],
+  checklists: {
+    w4: ['[e.g. confirm time off work]', '[e.g. book primary lodging]'],
+    w2: ['[e.g. arrange pet/house sitter]', '[e.g. verify opening hours for planned stops]'],
+    dayBefore: ['[e.g. pack, charge devices]', '[e.g. re-check weather + closures]'],
+    onRoad: ['[e.g. daily check-in with home]'],
+  },
+  contacts: [{ name: '[e.g. Roadside assistance]', ref: '[number]' }],
+  budget: {
+    lodging:    { label: 'Lodging',          budgeted: '', actual: '' },
+    transport:  { label: 'Transport / fuel', budgeted: '', actual: '' },
+    food:       { label: 'Food',             budgeted: '', actual: '' },
+    activities: { label: 'Activities',       budgeted: '', actual: '' },
+    misc:       { label: 'Misc / buffer',    budgeted: '', actual: '' },
+  },
+  extras: [{ item: '[what needs tracking]', notes: '[details]' }],
+};
+const SEED = TRIP_SEED || GENERIC_SEED;
+
+// ---- editor name (local only, for the "last edited by" tag) ----
+const nameInput = document.getElementById('editorName');
+nameInput.value = localStorage.getItem('trip-editor-name') || '';
+nameInput.addEventListener('blur', () => localStorage.setItem('trip-editor-name', nameInput.value.trim()));
+function editorName() { return localStorage.getItem('trip-editor-name')?.trim() || 'Someone'; }
+
+// ---- central write helper: every field commit goes through here so we can
+// stamp who/when without threading it through every handler individually ----
+function writeValue(path, value) {
+  set(ref(db, path), value);
+  set(ref(db, `trips/${tripId}/meta/lastEditedBy`), editorName());
+  set(ref(db, `trips/${tripId}/meta/lastEditedAt`), new Date().toISOString());
+}
+
+// ---- seed a brand-new trip id once ----
+get(tripRef).then(snap => {
+  if (snap.exists()) return;
+  const seeded = {
+    meta: SEED.meta,
+    itinerary: {},
+    checklists: { w4: {}, w2: {}, dayBefore: {}, onRoad: {} },
+    budget: SEED.budget,
+    contacts: {},
+    extras: {},
+  };
+  SEED.itineraryDays.forEach(day => {
+    const key = push(child(tripRef, 'itinerary')).key;
+    seeded.itinerary[key] = day;
+  });
+  Object.entries(SEED.checklists).forEach(([tier, items]) => {
+    items.forEach(text => {
+      const key = push(child(tripRef, `checklists/${tier}`)).key;
+      seeded.checklists[tier][key] = { text, checked: false };
+    });
+  });
+  SEED.contacts.forEach(c => {
+    const key = push(child(tripRef, 'contacts')).key;
+    seeded.contacts[key] = c;
+  });
+  SEED.extras.forEach(x => {
+    const key = push(child(tripRef, 'extras')).key;
+    seeded.extras[key] = x;
+  });
+  set(tripRef, seeded);
+});
+
+// ---- offline-first render: paint from localStorage cache immediately if present,
+// then let the live Firebase listener take over once it connects ----
+const cached = localStorage.getItem(CACHE_KEY);
+if (cached) {
+  try { renderAll(JSON.parse(cached)); } catch (e) { /* ignore bad cache */ }
+}
+const offlineTimer = setTimeout(() => {
+  if (!hasSynced) document.getElementById('offlineBanner').classList.add('show');
+}, 6000);
+
+let hasSynced = false;
+let firstSync = true;
+onValue(tripRef, snap => {
+  hasSynced = true;
+  clearTimeout(offlineTimer);
+  document.getElementById('offlineBanner').classList.remove('show');
+  const data = snap.val() || {};
+  localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+  document.getElementById('syncDot').classList.remove('offline');
+  document.getElementById('syncDot').classList.add('ok');
+  const who = data.meta?.lastEditedBy;
+  document.getElementById('syncText').textContent = firstSync
+    ? 'Synced'
+    : `Synced${who ? ' · edited by ' + who : ''} · just now`;
+  firstSync = false;
+  renderAll(data);
+}, err => {
+  document.getElementById('syncDot').classList.add('offline');
+  document.getElementById('syncText').textContent = 'Sync error — check console';
+  console.error(err);
+});
+
+function renderAll(data) {
+  renderMeta(data.meta || {});
+  renderItinerary(data.itinerary || {});
+  renderChecklists(data.checklists || {});
+  renderBudget(data.budget || {});
+  renderContacts(data.contacts || {});
+  renderExtras(data.extras || {});
+}
+
+function focusedInside(container) {
+  return container && container.contains(document.activeElement);
+}
+function commitOnBlur(el, writePath, isCheckbox) {
+  el.addEventListener('blur', () => writeValue(writePath, el.textContent));
+}
+
+function renderMeta(meta) {
+  const titleEl = document.getElementById('title');
+  const subEl = document.getElementById('subtitle');
+  const daysEl = document.getElementById('days');
+  if (document.activeElement !== titleEl) titleEl.textContent = meta.title ?? '';
+  if (document.activeElement !== subEl) subEl.textContent = meta.subtitle ?? '';
+  if (document.activeElement !== daysEl) daysEl.textContent = meta.days ?? '—';
+  titleEl.onblur = () => writeValue(`trips/${tripId}/meta/title`, titleEl.textContent);
+  subEl.onblur = () => writeValue(`trips/${tripId}/meta/subtitle`, subEl.textContent);
+  daysEl.onblur = () => writeValue(`trips/${tripId}/meta/days`, daysEl.textContent);
+}
+
+// ---- date / today helpers ----
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function formatDate(iso) {
+  if (!iso) return 'Add date';
+  const d = new Date(iso + 'T00:00:00');
+  if (isNaN(d)) return iso;
+  return d.toLocaleDateString('en-SG', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+// Full weekday name ("Tuesday") for the itinerary card's stacked date display.
+function formatWeekday(iso) {
+  if (!iso) return 'No date set';
+  const d = new Date(iso + 'T00:00:00');
+  if (isNaN(d)) return '';
+  return d.toLocaleDateString('en-SG', { weekday: 'long' });
+}
+// d/m/yyyy, no leading zeros — matches the numeric line under the weekday.
+function formatNumericDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso + 'T00:00:00');
+  if (isNaN(d)) return iso;
+  return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+}
+
+// ---- weather (Open-Meteo, no API key; only returns data within ~16 days of today) ----
+const weatherCache = new Map();
+const WMO = {
+  0: '☀️ Clear', 1: '🌤️ Mostly clear', 2: '⛅ Partly cloudy', 3: '☁️ Cloudy',
+  45: '🌫️ Fog', 48: '🌫️ Fog', 51: '🌦️ Light drizzle', 53: '🌦️ Drizzle', 55: '🌧️ Heavy drizzle',
+  61: '🌦️ Light rain', 63: '🌧️ Rain', 65: '🌧️ Heavy rain', 71: '🌨️ Light snow', 73: '🌨️ Snow', 75: '❄️ Heavy snow',
+  80: '🌦️ Showers', 81: '🌧️ Showers', 82: '⛈️ Violent showers', 95: '⛈️ Thunderstorm', 96: '⛈️ Thunderstorm (hail)', 99: '⛈️ Thunderstorm (hail)',
+};
+async function fetchWeather(lat, lon, date) {
+  const key = `${lat},${lon},${date}`;
+  if (weatherCache.has(key)) return weatherCache.get(key);
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto&start_date=${date}&end_date=${date}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    const code = json?.daily?.weathercode?.[0];
+    const max = json?.daily?.temperature_2m_max?.[0];
+    const min = json?.daily?.temperature_2m_min?.[0];
+    const result = (code === undefined) ? null : { label: WMO[code] || '—', max, min };
+    weatherCache.set(key, result);
+    return result;
+  } catch (e) {
+    return null;
+  }
+}
+function attachWeather(el, lat, lon, date) {
+  if (!lat || !lon || !date) { el.textContent = ''; return; }
+  const daysOut = Math.round((new Date(date) - new Date(todayISO())) / 86400000);
+  if (daysOut < 0) { el.textContent = ''; return; }
+  if (daysOut > 15) {
+    el.textContent = 'Forecast available once within ~2 weeks of this date';
+    el.classList.add('muted');
+    return;
+  }
+  el.textContent = 'Checking forecast…';
+  el.classList.add('muted');
+  fetchWeather(lat, lon, date).then(w => {
+    if (!w) { el.textContent = 'Forecast unavailable'; return; }
+    el.classList.remove('muted');
+    el.textContent = `${w.label} · ${Math.round(w.min)}–${Math.round(w.max)}°C`;
+  });
+}
+
+// ---- geocoding (Open-Meteo geocoding API, no key) — fills lat/lon from a
+// typed location name so the human doesn't need to look up or see raw
+// coordinates; the coords row stays hidden behind a toggle for the rare
+// case the auto-match is wrong (ambiguous place names) and needs fixing. ----
+async function geocodeLocation(query) {
+  try {
+    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=en&format=json`;
+    const res = await fetch(url);
+    const json = await res.json();
+    const r = json?.results?.[0];
+    if (!r) return null;
+    return { lat: r.latitude, lon: r.longitude };
+  } catch (e) {
+    return null;
+  }
+}
+
+function renderItinerary(itinerary) {
+  const list = document.getElementById('itineraryList');
+  if (focusedInside(list)) return;
+  list.innerHTML = '';
+  const today = todayISO();
+  // Sort by date first (this is what drives "today" highlighting, weather
+  // lookups, and the overall trip narrative — it stays authoritative and
+  // is never overridden by manual reordering). Within the same date (or
+  // among days that don't have a date yet), `order` breaks the tie so the
+  // ▲/▼ buttons below have something to actually move; entries that have
+  // never been manually reordered fall back to creation order (push key),
+  // same as before this feature existed.
+  const entries = Object.entries(itinerary).sort(([ka, a], [kb, b]) => {
+    const da = a.date || '9999-99-99', db = b.date || '9999-99-99';
+    if (da !== db) return da < db ? -1 : 1;
+    const oa = a.order ?? 0, ob = b.order ?? 0;
+    if (oa !== ob) return oa < ob ? -1 : 1;
+    return ka < kb ? -1 : 1;
+  });
+  // Reorders `key` within its date group (only meaningful within the group —
+  // see the sort comment above for why dates always win across groups).
+  // Repairs the whole group to clean sequential order values first (so
+  // legacy cards with no `order` field yet get one), then swaps the two
+  // positions being moved.
+  function reorderWithinDateGroup(key, direction) {
+    const idx = entries.findIndex(([k]) => k === key);
+    if (idx === -1) return;
+    const groupDate = entries[idx][1].date || '';
+    let start = idx, end = idx;
+    while (start > 0 && (entries[start - 1][1].date || '') === groupDate) start--;
+    while (end < entries.length - 1 && (entries[end + 1][1].date || '') === groupDate) end++;
+    const group = entries.slice(start, end + 1);
+    const posInGroup = idx - start;
+    const targetPos = posInGroup + direction;
+    if (targetPos < 0 || targetPos >= group.length) return;
+    const orders = group.map((_, i) => i * 10);
+    [orders[posInGroup], orders[targetPos]] = [orders[targetPos], orders[posInGroup]];
+    group.forEach(([k], i) => writeValue(`trips/${tripId}/itinerary/${k}/order`, orders[i]));
+  }
+  entries.forEach(([key, day], i) => {
+    const isToday = day.date && day.date === today;
+    const card = document.createElement('div');
+    card.className = 'card' + (isToday ? ' is-today' : '');
+    card.innerHTML = `
+      <div class="card-row">
+        <div class="day-label-group">
+          <span class="day-label">Stop ${i + 1}</span>
+          ${isToday ? '<span class="today-tag">Today</span>' : ''}
+          <span class="move-btns">
+            <button class="move-btn" type="button" data-move-up title="Move up (same date)">▲</button>
+            <button class="move-btn" type="button" data-move-down title="Move down (same date)">▼</button>
+          </span>
+        </div>
+        <div class="date-display">
+          <div class="date-weekday" data-weekday></div>
+          <div class="date-numeric" data-numeric></div>
+        </div>
+        <input class="day-date-input" type="date" data-f="date">
+      </div>
+      <div class="field"><span class="field-label">Location</span><span contenteditable="true" data-f="location"></span></div>
+      <div class="geocode-feedback" data-geocode-feedback></div>
+      <div class="card-links">
+        <button class="coords-toggle" type="button" data-toggle-coords>± coordinates</button>
+        <a class="nav-link" data-waze target="_blank" rel="noopener" style="display:none;">Navigate in Waze →</a>
+      </div>
+      <div class="coords-row hidden">
+        <span class="field-label" style="align-self:center;margin:0;">Coords</span>
+        <input type="number" step="any" placeholder="lat" data-f="lat">
+        <input type="number" step="any" placeholder="lon" data-f="lon">
+      </div>
+      <div class="field"><span class="field-label">Plan</span><span contenteditable="true" data-f="plan"></span></div>
+      <div class="field"><span class="field-label">Lodging</span><span contenteditable="true" data-f="lodging"></span></div>
+      <div class="field"><span class="field-label">Alternate (weather / closure)</span><span contenteditable="true" data-f="alt"></span></div>
+      <div class="weather-line" data-weather></div>
+      <button class="remove-row" data-remove>− Remove this day</button>`;
+
+    const latInput = card.querySelector('[data-f="lat"]');
+    const lonInput = card.querySelector('[data-f="lon"]');
+    const wazeLink = card.querySelector('[data-waze]');
+    const weekdayEl = card.querySelector('[data-weekday]');
+    const numericEl = card.querySelector('[data-numeric]');
+    const geoFeedback = card.querySelector('[data-geocode-feedback]');
+    function updateWazeLink() {
+      const lat = latInput.value, lon = lonInput.value;
+      if (lat && lon) {
+        wazeLink.href = `https://waze.com/ul?ll=${lat},${lon}&navigate=yes`;
+        wazeLink.style.display = '';
+      } else {
+        wazeLink.style.display = 'none';
+      }
+    }
+    function updateDateDisplay(iso) {
+      weekdayEl.textContent = formatWeekday(iso);
+      numericEl.textContent = formatNumericDate(iso);
+    }
+    function showGeoFeedback(msg) {
+      geoFeedback.textContent = msg;
+      geoFeedback.classList.toggle('show', !!msg);
+    }
+
+    const dateInput = card.querySelector('[data-f="date"]');
+    dateInput.value = day.date ?? '';
+    updateDateDisplay(day.date);
+    dateInput.addEventListener('change', e => {
+      writeValue(`trips/${tripId}/itinerary/${key}/date`, e.target.value);
+      updateDateDisplay(e.target.value);
+    });
+
+    // Coordinates are auto-resolved from the typed location text every time
+    // it changes, UNLESS the human has manually edited the lat/lon fields
+    // (tracked via the persisted `coordsManual` flag below) — that's what
+    // makes editing a seeded card's location (e.g. Sydney -> a Singapore
+    // address) actually move the pin and the Waze link, instead of silently
+    // keeping the old coordinates because *some* coords already existed.
+    const locEl = card.querySelector('[data-f="location"]');
+    locEl.textContent = day.location ?? '';
+    locEl.addEventListener('blur', () => {
+      const text = locEl.textContent.trim();
+      writeValue(`trips/${tripId}/itinerary/${key}/location`, text);
+      if (!text || day.coordsManual) { showGeoFeedback(''); return; }
+      showGeoFeedback('Locating…');
+      geocodeLocation(text).then(geo => {
+        if (!geo) {
+          showGeoFeedback('Couldn’t find that place — set coordinates manually via “± coordinates” below');
+          return;
+        }
+        showGeoFeedback('');
+        latInput.value = geo.lat;
+        lonInput.value = geo.lon;
+        updateWazeLink();
+        writeValue(`trips/${tripId}/itinerary/${key}/lat`, geo.lat);
+        writeValue(`trips/${tripId}/itinerary/${key}/lon`, geo.lon);
+        attachWeather(card.querySelector('[data-weather]'), geo.lat, geo.lon, day.date);
+      });
+    });
+
+    card.querySelectorAll('span[data-f]:not([data-f="location"])').forEach(el => {
+      el.textContent = day[el.dataset.f] ?? '';
+      commitOnBlur(el, `trips/${tripId}/itinerary/${key}/${el.dataset.f}`);
+    });
+    card.querySelectorAll('input[type="number"][data-f]').forEach(el => {
+      el.value = day[el.dataset.f] ?? '';
+      el.addEventListener('blur', () => {
+        writeValue(`trips/${tripId}/itinerary/${key}/${el.dataset.f}`, el.value);
+        // A manual coordinate edit pins the location, so future location-text
+        // edits stop auto-overwriting it — see the geocode note above.
+        writeValue(`trips/${tripId}/itinerary/${key}/coordsManual`, true);
+        updateWazeLink();
+      });
+    });
+    card.querySelector('[data-toggle-coords]').onclick = () => card.querySelector('.coords-row').classList.toggle('hidden');
+    card.querySelector('[data-remove]').onclick = () => set(ref(db, `trips/${tripId}/itinerary/${key}`), null);
+
+    const groupDate = day.date || '';
+    const isFirstInGroup = i === 0 || (entries[i - 1][1].date || '') !== groupDate;
+    const isLastInGroup = i === entries.length - 1 || (entries[i + 1][1].date || '') !== groupDate;
+    const upBtn = card.querySelector('[data-move-up]');
+    const downBtn = card.querySelector('[data-move-down]');
+    upBtn.disabled = isFirstInGroup;
+    downBtn.disabled = isLastInGroup;
+    upBtn.onclick = () => reorderWithinDateGroup(key, -1);
+    downBtn.onclick = () => reorderWithinDateGroup(key, +1);
+
+    list.appendChild(card);
+
+    updateWazeLink();
+    attachWeather(card.querySelector('[data-weather]'), day.lat, day.lon, day.date);
+  });
+
+  renderMap(entries);
+}
+document.getElementById('addDay').onclick = () => {
+  const key = push(child(tripRef, 'itinerary')).key;
+  writeValue(`trips/${tripId}/itinerary/${key}`, { date: '', location: '', lat: '', lon: '', plan: '', lodging: '', alt: '', coordsManual: false, order: 0 });
+};
+
+// ---- map ----
+let leafletMap = null;
+let markerLayer = null;
+function renderMap(sortedEntries) {
+  if (typeof L === 'undefined') return;
+  if (!leafletMap) {
+    leafletMap = L.map('mapView').setView([0, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 18,
+    }).addTo(leafletMap);
+    markerLayer = L.layerGroup().addTo(leafletMap);
+  }
+  markerLayer.clearLayers();
+  const points = [];
+  sortedEntries.forEach(([key, day], i) => {
+    const lat = parseFloat(day.lat), lon = parseFloat(day.lon);
+    if (isNaN(lat) || isNaN(lon)) return;
+    points.push([lat, lon]);
+    L.marker([lat, lon]).addTo(markerLayer)
+      .bindPopup(`<strong>Stop ${i + 1}${day.date ? ' · ' + formatDate(day.date) : ''}</strong><br>${day.location || ''}`);
+  });
+  if (points.length >= 2) {
+    L.polyline(points, { color: '#B8862F', weight: 3, opacity: 0.7 }).addTo(markerLayer);
+  }
+  if (points.length) {
+    leafletMap.fitBounds(points, { padding: [30, 30] });
+  }
+  setTimeout(() => leafletMap.invalidateSize(), 50);
+}
+document.querySelector('[data-panel="map"]');
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    if (tab.dataset.panel === 'map' && leafletMap) setTimeout(() => leafletMap.invalidateSize(), 50);
+  });
+});
+
+function renderChecklists(checklists) {
+  ['w4', 'w2', 'dayBefore', 'onRoad'].forEach(tier => {
+    const container = document.getElementById('tier-' + tier);
+    if (focusedInside(container)) return;
+    container.innerHTML = '';
+    const items = checklists[tier] || {};
+    Object.entries(items).sort(([a], [b]) => (a < b ? -1 : 1)).forEach(([key, item]) => {
+      const row = document.createElement('div');
+      row.className = 'check-item';
+      row.innerHTML = `<input type="checkbox"><span contenteditable="true"></span><button class="remove-row" data-remove>✕</button>`;
+      row.querySelector('input').checked = !!item.checked;
+      row.querySelector('span').textContent = item.text ?? '';
+      row.querySelector('input').onchange = e => writeValue(`trips/${tripId}/checklists/${tier}/${key}/checked`, e.target.checked);
+      commitOnBlur(row.querySelector('span'), `trips/${tripId}/checklists/${tier}/${key}/text`);
+      row.querySelector('[data-remove]').onclick = () => set(ref(db, `trips/${tripId}/checklists/${tier}/${key}`), null);
+      container.appendChild(row);
+    });
+  });
+}
+document.querySelectorAll('.tier-add').forEach(btn => {
+  btn.onclick = () => {
+    const tier = btn.closest('.tier').dataset.tier;
+    const key = push(child(tripRef, `checklists/${tier}`)).key;
+    writeValue(`trips/${tripId}/checklists/${tier}/${key}`, { text: '[new item]', checked: false });
+  };
+});
+
+function renderBudget(budget) {
+  const body = document.getElementById('budgetBody');
+  if (focusedInside(body)) return;
+  body.innerHTML = '';
+  let totalB = 0, totalA = 0;
+  Object.entries(budget).forEach(([key, row]) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${row.label}</td><td contenteditable="true" data-f="budgeted"></td><td contenteditable="true" data-f="actual"></td>`;
+    tr.querySelectorAll('[data-f]').forEach(td => {
+      td.textContent = row[td.dataset.f] ?? '';
+      commitOnBlur(td, `trips/${tripId}/budget/${key}/${td.dataset.f}`);
+    });
+    totalB += Number(row.budgeted) || 0;
+    totalA += Number(row.actual) || 0;
+    body.appendChild(tr);
+  });
+  const totalRow = document.createElement('tr');
+  totalRow.className = 'total';
+  totalRow.innerHTML = `<td>Total</td><td>${totalB || '—'}</td><td>${totalA || '—'}</td>`;
+  body.appendChild(totalRow);
+}
+
+function renderContacts(contacts) {
+  const grid = document.getElementById('contactGrid');
+  if (focusedInside(grid)) return;
+  grid.innerHTML = '';
+  Object.entries(contacts).sort(([a], [b]) => (a < b ? -1 : 1)).forEach(([key, c]) => {
+    const card = document.createElement('div');
+    card.className = 'card contact-card';
+    card.innerHTML = `
+      <span class="field-label">Name</span>
+      <div contenteditable="true" data-f="name"></div>
+      <span class="field-label">Phone / ref</span>
+      <div contenteditable="true" data-f="ref"></div>
+      <button class="remove-row" data-remove>− Remove</button>`;
+    card.querySelectorAll('[data-f]').forEach(el => {
+      el.textContent = c[el.dataset.f] ?? '';
+      commitOnBlur(el, `trips/${tripId}/contacts/${key}/${el.dataset.f}`);
+    });
+    card.querySelector('[data-remove]').onclick = () => set(ref(db, `trips/${tripId}/contacts/${key}`), null);
+    grid.appendChild(card);
+  });
+}
+document.getElementById('addContact').onclick = () => {
+  const key = push(child(tripRef, 'contacts')).key;
+  writeValue(`trips/${tripId}/contacts/${key}`, { name: '[name]', ref: '[number / ref]' });
+};
+
+function renderExtras(extras) {
+  const list = document.getElementById('extrasList');
+  if (focusedInside(list)) return;
+  list.innerHTML = '';
+  Object.entries(extras).sort(([a], [b]) => (a < b ? -1 : 1)).forEach(([key, x]) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="field"><span class="field-label">Item</span><span contenteditable="true" data-f="item"></span></div>
+      <div class="field"><span class="field-label">Notes</span><span contenteditable="true" data-f="notes"></span></div>
+      <button class="remove-row" data-remove>− Remove</button>`;
+    card.querySelectorAll('[data-f]').forEach(el => {
+      el.textContent = x[el.dataset.f] ?? '';
+      commitOnBlur(el, `trips/${tripId}/extras/${key}/${el.dataset.f}`);
+    });
+    card.querySelector('[data-remove]').onclick = () => set(ref(db, `trips/${tripId}/extras/${key}`), null);
+    list.appendChild(card);
+  });
+}
+document.getElementById('addExtra').onclick = () => {
+  const key = push(child(tripRef, 'extras')).key;
+  writeValue(`trips/${tripId}/extras/${key}`, { item: '', notes: '' });
+};
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.panel).classList.add('active');
+  });
+});
+
+document.getElementById('printBtn').onclick = () => window.print();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/trip-dashboard/sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
