@@ -40,8 +40,12 @@
   .stub p { font-family: var(--font-mono); font-size: 13px; color: var(--paper-dim); opacity: 0.75; margin: 0; }
 
   .trip-list { display: flex; flex-direction: column; gap: 24px; }
+  .trip-section { margin: 0; }
   .trip-section-list { display: flex; flex-direction: column; gap: 12px; }
-  .section-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brass); font-weight: 600; margin: 0 0 10px; }
+  .section-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brass); font-weight: 600; margin: 0 0 10px; cursor: pointer; list-style: none; user-select: none; }
+  .section-label::-webkit-details-marker { display: none; }
+  .section-label::before { content: '▸'; display: inline-block; width: 1em; color: var(--brass); transition: transform 0.15s ease; }
+  .trip-section[open] > .section-label::before { transform: rotate(90deg); }
   .trip-card { display: block; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; text-decoration: none; color: inherit; transition: border-color 0.15s ease; }
   .trip-card:hover { border-color: var(--brass); }
   .trip-card h2 { font-family: var(--font-display); font-weight: 600; font-size: 19px; margin: 0 0 4px; color: var(--ink); }
@@ -93,12 +97,18 @@
     a.querySelector('p').textContent = trip.subtitle || '';
     return a;
   }
-  function sectionEl(label, trips) {
-    const section = document.createElement('div');
-    const heading = document.createElement('p');
-    heading.className = 'section-label';
-    heading.textContent = label;
-    section.appendChild(heading);
+  // <details>/<summary> gives expand/collapse for free — no JS state to
+  // track, works without a click handler. Current Trips defaults open
+  // (that's what you're here for); Past Trips defaults collapsed, since
+  // the point is to get past trips out of the way once there are several.
+  function sectionEl(label, trips, openByDefault) {
+    const section = document.createElement('details');
+    section.className = 'trip-section';
+    section.open = openByDefault;
+    const summary = document.createElement('summary');
+    summary.className = 'section-label';
+    summary.textContent = label;
+    section.appendChild(summary);
     const list = document.createElement('div');
     list.className = 'trip-section-list';
     trips.forEach(trip => list.appendChild(tripCardEl(trip)));
@@ -130,8 +140,8 @@
       listEl.innerHTML = '<p class="empty">No trips yet — see DEV_NOTES.md "To start a new real trip."</p>';
       return;
     }
-    if (current.length) listEl.appendChild(sectionEl('Current Trips', current));
-    if (past.length) listEl.appendChild(sectionEl('Past Trips', past));
+    if (current.length) listEl.appendChild(sectionEl('Current Trips', current, true));
+    if (past.length) listEl.appendChild(sectionEl('Past Trips', past, false));
   }
 
   fetch('trips.json')

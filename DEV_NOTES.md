@@ -574,6 +574,16 @@ since that card was already built as an HTML template string inside
   has no dated itinerary days yet — confirmed via a real dry run of
   `new-trip.mjs` against its own example seed) falls into Current Trips
   rather than being silently dropped from the list.
+  **Expand/collapse (added right after):** each section is a native
+  `<details>`/`<summary>` rather than a plain `<div>` — free expand/
+  collapse with no JS click-handler/state to maintain, and it works even
+  if JS partially fails. `.section-label`'s default `::marker` triangle is
+  hidden and replaced with a `::before` chevron that rotates on `[open]`,
+  styled to match the mono/uppercase/brass look already used for section
+  dividers elsewhere (e.g. the Help tab's `.help-group-title`). Current
+  Trips defaults open (`sectionEl(..., true)`), Past Trips defaults closed
+  (`sectionEl(..., false)`) — the point of Past Trips is to get out of the
+  way once there are several.
 
 ## Known limitations (already communicated to the user — don't "fix" silently)
 
@@ -776,7 +786,12 @@ since that card was already built as an HTML template string inside
     grouping/sort logic against real data plus synthetic past/no-date
     cases (see the logic in `index.html`'s inline script), plus the same
     `node --check`/dry-run/local-server/DOM-id checks as round 17.
-    **Not verified in an actual browser**, same caveat as rounds 16-17.
+    Then asked for the two sections to be individually expandable/
+    collapsible — switched each section from a plain `<div>` to a native
+    `<details>`/`<summary>` (see Feature notes "Expand/collapse"), Current
+    Trips open by default, Past Trips closed. Same verification technique
+    as the rest of this round. **Not verified in an actual browser**, same
+    caveat as rounds 16-17.
 
 ## Trips so far
 
