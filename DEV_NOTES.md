@@ -806,6 +806,24 @@ since that card was already built as an HTML template string inside
     live-browser-verification item under "Still open" (which used to
     specifically reference this trip for weather/countdown checks, since
     it was the only trip with near-term dates).
+20. A different Claude session reviewed rounds 16-19 (the `app.js`
+    extraction, landing page, and Singapore cleanup) after the fact and
+    found that `sw.js` had never been updated for the `app.js`
+    extraction — its network-first check only matched `.html`, `/`, and
+    `manifest.json`, so same-origin `.js` requests (i.e. `app.js` itself,
+    now where 100% of the dashboard's logic lives) fell through to the
+    cache-first branch below. That's the same bug History #8 already
+    fixed once for `index.html`, recurring one layer down: a deployed fix
+    to `app.js` could silently fail to show up on a returning visitor's
+    phone until a second load. Fixed by adding `.js` to the network-first
+    match and bumping the cache name to `trip-dashboard-shell-v3` so any
+    already-stale cached `app.js` gets purged on activate rather than
+    waiting to be incidentally refetched. **Lesson:** when a shared
+    module gets extracted out of what used to be inline/duplicated code
+    (see History #16), re-check every piece of infrastructure that
+    reasons about file types or paths — not just the code that imports
+    it — since `sw.js`'s cache rules had no reason to be touched by the
+    extraction itself and so silently went stale.
 
 ## Trips so far
 

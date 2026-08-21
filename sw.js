@@ -10,7 +10,17 @@
 // (see DEV_NOTES.md), not just a rare edge case, since this app gets
 // updated in place fairly often. Only genuinely static assets (the icon)
 // stay cache-first, since those don't change.
-const CACHE = 'trip-dashboard-shell-v2';
+//
+// v3: the shared engine got extracted into app.js (see DEV_NOTES.md
+// History), and this file was never updated for it — same-origin .js
+// requests fell through to the cache-first branch below, which meant a
+// deployed fix to app.js (now where 100% of the dashboard's logic lives)
+// could silently fail to show up on a returning visitor's phone until a
+// second load, reproducing the exact v1 bug one level down. .js files are
+// now network-first too, same rule as HTML/manifest. Cache name bumped
+// again so any already-stale cached app.js gets purged on activate rather
+// than lingering until it happens to get refetched.
+const CACHE = 'trip-dashboard-shell-v3';
 
 self.addEventListener('install', event => {
   self.skipWaiting();
@@ -38,13 +48,15 @@ self.addEventListener('fetch', event => {
   const isAppShellDoc = req.mode === 'navigate'
     || url.pathname.endsWith('.html')
     || url.pathname.endsWith('/')
-    || url.pathname.endsWith('manifest.json');
+    || url.pathname.endsWith('manifest.json')
+    || url.pathname.endsWith('.js');
 
   if (isAppShellDoc) {
     // Network-first: always try to get the latest code/manifest when
     // online. Only fall back to whatever's cached if the network request
     // fails outright (offline, DNS down, etc.) — matching the "offline
-    // resilience" feature's actual intent.
+    // resilience" feature's actual intent. Covers app.js (see v3 note
+    // above) as well as the HTML/manifest this already applied to.
     event.respondWith(
       fetch(req).then(response => {
         if (response.ok) caches.open(CACHE).then(cache => cache.put(req, response.clone()));
