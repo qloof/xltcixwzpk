@@ -854,6 +854,40 @@ since that card was already built as an HTML template string inside
     endpoint (publicly documented as CORS-enabled for reads, but not
     exercised here) is unconfirmed — folded into the existing
     live-browser-verification item under "Still open."
+22. Same session: got Claude in Chrome actually connected (it needed a
+    toggle enabled under the Claude desktop app's own "Claude in Chrome"
+    settings page — distinct from both the Chrome extension's own
+    permissions/options pages and Chrome's native per-extension "Site
+    access" setting, all three of which were already fine; the desktop
+    app's Connectors list also showed it as connected, which turned out
+    to be a red herring — that entry apparently just reflects whether the
+    connector exists, not whether it's enabled). With it connected, ran
+    the first actual real-browser verification this project has had since
+    the `app.js` extraction:
+    - Landing page loads, shows `australia-dec-2026` under "Current
+      Trips" with the correct title/subtitle/link.
+    - The new live-itinerary REST fetch (History #21) genuinely works:
+      confirmed via the browser's own network log, `GET
+      .../trips/australia-dec-2026/itinerary.json` → `200`, no CORS
+      error, console clean.
+    - Opened the trip page itself: "Synced" status showing, the trip
+      countdown badge correctly computing "T-minus 109 days," drive time
+      rendering real OSRM data between Sydney and the Bondi stop, weather
+      correctly showing its "not within 2 weeks yet" message (expected,
+      not a bug, given the trip is months out), and the Help tab present
+      in the tab bar. Console showed one benign Firebase SDK internal log
+      ("heartbeats") and nothing else.
+    - Budget tab: currency dropdown correctly shows the AUD value set via
+      REST earlier this project, and the FX conversion line renders a
+      real live Frankfurter rate ("≈ SGD 5243 budgeted / 0 actual, at
+      today's rate (1 AUD = 0.9040 SGD)"), with the total itself computed
+      correctly (5800).
+    This is the first time since the `app.js` extraction (History #16)
+    that any of this has been confirmed outside static checks. Narrowed
+    "Still open"'s live-browser-verification item down to what's
+    genuinely still unexercised (see that entry) rather than leaving the
+    broad "nothing verified in a browser" framing standing now that most
+    of it has been.
 
 ## Trips so far
 
@@ -867,28 +901,18 @@ since that card was already built as an HTML template string inside
 
 ## Still open / natural next steps
 
-- **Live-browser verification of rounds 16-21's changes** (see History
-  #16-#21) — open the site root and confirm the landing page shows
-  `australia-dec-2026` under "Current Trips" and that the link works,
-  confirm no CORS errors in the console from the new per-trip
-  `itinerary.json` REST fetches (History #21), then open
-  `australia-dec-2026/` itself and confirm: the page loads with no
-  console errors, Firebase sync still works, weather/map/drive-time still
-  render (once within range of a dated stop), the new "reset to auto"
-  coords button and "Other…" currency input behave, and — hardest to fake
-  headlessly — the offline write queue actually queues a write while
-  devtools is set to offline, then sends it once back online. Also worth
-  actually editing the Australia trip's itinerary dates and confirming the
-  landing page's Current/Past grouping picks up the change without a
-  `trips.json` edit — the specific behavior History #21 was meant to fix.
-  This used to point at `singapore-aug-2026/` for the weather/countdown
-  checks specifically since it was the only trip with dates close enough
-  to today to actually exercise them — now that it's deleted (History
-  #19), those specific checks may need a temporary itinerary day with a
-  near-term date added to `australia-dec-2026` to exercise, then removed
-  after.
-  All three rounds' verification was thorough on the static/syntactic side
-  but nothing was exercised in a real browser against real Firebase.
+- **Remaining live-browser verification** (see History #22 — most of this
+  item is now done, this is what's left): the offline write queue
+  actually queuing a write while devtools is set to offline and sending
+  it once back online (hardest to fake headlessly, still untested); the
+  coords "reset to auto" button (no itinerary day currently has
+  `coordsManual: true` to exercise it against); the Budget currency
+  dropdown's "Other…" free-text option specifically (AUD, a fixed-list
+  value, was confirmed working, but the free-text fallback path wasn't
+  opened); and actually editing the Australia trip's itinerary dates to
+  confirm the landing page's Current/Past grouping re-buckets without a
+  `trips.json` edit (History #21's fix was verified via a real network
+  request succeeding, not by triggering an actual re-bucket).
 - Real verification pass before the Australia trip is actually real:
   confirm opening hours/closures for each stop via web search close to the
   trip date (per the standing project instruction), fill in actual
