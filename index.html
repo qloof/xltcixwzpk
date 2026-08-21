@@ -79,13 +79,44 @@
   // page Feature notes entry) rather than trying to enumerate folders:
   // GitHub Pages is plain static hosting with no directory-listing API, so
   // a maintained manifest file is the only way to know what trips exist.
+  // trips.json's own startDate/endDate are used only as a fallback now —
+  // see liveDateRange() below for why.
   const listEl = document.getElementById('tripList');
+
+  // Firebase Realtime Database's plain REST API (public reads are
+  // CORS-enabled by default — this is the documented way to read RTDB data
+  // from a browser without the SDK), not the firebase-database SDK: this
+  // page deliberately doesn't import app.js/Firebase itself (see the
+  // service-worker-registration comment below), and a couple of one-shot
+  // GETs don't need the SDK's live-subscription machinery anyway.
 
   // Same local-date approach as todayISO() in app.js (getFullYear/getMonth/
   // getDate, not toISOString) to avoid UTC-vs-local date shifting.
   function todayISO() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  const DB_URL = 'https://trip-dashboard-c6f8a-default-rtdb.asia-southeast1.firebasedatabase.app';
+
+  // Live date range for one trip, computed from its actual itinerary —
+  // same min/max-of-dated-days logic as updateTripStatus() in app.js, just
+  // fetched here via plain REST instead of the SDK's live listener. This
+  // is what actually fixes the "trip edited in-app doesn't re-bucket on
+  // the landing page until someone remembers to update trips.json by
+  // hand" gap: trips.json's startDate/endDate are now only a fallback,
+  // used when this fetch fails (offline, network hiccup) or the trip has
+  // no dated itinerary rows yet (e.g. a freshly-scaffolded blank trip).
+  function liveDateRange(slug) {
+    return fetch(`${DB_URL}/trips/${slug}/itinerary.json`)
+      .then(res => res.ok ? res.json() : null)
+      .then(itinerary => {
+        if (!itinerary) return null;
+        const dates = Object.values(itinerary).map(d => d.date).filter(Boolean).sort();
+        if (!dates.length) return null;
+        return { startDate: dates[0], endDate: dates[dates.length - 1] };
+      })
+      .catch(() => null);
   }
 
   function tripCardEl(trip) {
@@ -116,14 +147,11 @@
     return section;
   }
 
-  // Groups by each trip's own itinerary dates (startDate/endDate in
-  // trips.json — see scripts/new-trip.mjs) rather than fetching live
-  // Firebase data for every trip, which would mean this static page
-  // suddenly depending on Firebase just to sort a links list. This does
-  // mean a trip whose dates get edited later in the app itself won't
-  // re-bucket here until trips.json is updated too — see DEV_NOTES.md
-  // "Landing page" for the tradeoff. A trip missing startDate/endDate
-  // falls into Current Trips rather than being silently dropped.
+  // Groups by each trip's startDate/endDate — by this point in the fetch
+  // chain (see below) these have already been overwritten with the live
+  // itinerary-derived range where available, trips.json's copy only
+  // surviving as a fallback. A trip missing both falls into Current Trips
+  // rather than being silently dropped.
   function renderTripList(trips) {
     const today = todayISO();
     const current = [];
@@ -151,8 +179,16 @@
     })
     .then(trips => {
       if (!Array.isArray(trips)) throw new Error('trips.json is not an array');
-      renderTripList(trips);
+      // Fetch every trip's live date range in parallel, overlaying it onto
+      // trips.json's copy (Object.assign keeps the static value when
+      // liveDateRange() returns null — see its own comment for when that
+      // happens). A slow/failed lookup for one trip never blocks the
+      // others or the page as a whole.
+      return Promise.all(trips.map(trip =>
+        liveDateRange(trip.slug).then(live => Object.assign({}, trip, live || {}))
+      ));
     })
+    .then(trips => renderTripList(trips))
     .catch(err => {
       listEl.innerHTML = '<p class="error">Couldn’t load the trip list — check trips.json.</p>';
       console.error(err);

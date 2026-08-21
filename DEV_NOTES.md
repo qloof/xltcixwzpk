@@ -565,15 +565,19 @@ since that card was already built as an HTML template string inside
   in-progress trip and a separate "Upcoming" section felt like overkill
   for two trips a year) and "Past Trips" (only rendered once there's at
   least one), sorted soonest-first and most-recent-first respectively.
-  Grouping is computed client-side from each trip's `startDate`/`endDate`
-  in `trips.json`, not by fetching live Firebase data for every trip on
-  this page — the tradeoff is that a trip whose dates get edited later
-  inside the app itself won't re-bucket here until `trips.json` catches
-  up (a `new-trip.mjs`-adjacent manual fix, not automatic). A trip with no
-  `startDate`/`endDate` (e.g. a freshly-scaffolded blank trip whose seed
-  has no dated itinerary days yet — confirmed via a real dry run of
-  `new-trip.mjs` against its own example seed) falls into Current Trips
-  rather than being silently dropped from the list.
+  Grouping is computed from each trip's `startDate`/`endDate` — originally
+  read straight from `trips.json`, which went stale the moment a trip's
+  actual dates were edited inside the app without anyone remembering to
+  update `trips.json` to match (fixed, see History #21: the page now
+  fetches each trip's live itinerary via Firebase's plain REST API —
+  `fetch` only, no SDK/import of `app.js` — and computes the range the
+  same way `updateTripStatus()` does in `app.js`; `trips.json`'s copy
+  survives only as a fallback for when that fetch fails or a trip has no
+  dated itinerary rows yet). A trip with no date range either way (e.g. a
+  freshly-scaffolded blank trip whose seed has no dated itinerary days
+  yet — confirmed via a real dry run of `new-trip.mjs` against its own
+  example seed) falls into Current Trips rather than being silently
+  dropped from the list.
   **Expand/collapse (added right after):** each section is a native
   `<details>`/`<summary>` rather than a plain `<div>` — free expand/
   collapse with no JS click-handler/state to maintain, and it works even
@@ -824,6 +828,32 @@ since that card was already built as an HTML template string inside
     reasons about file types or paths — not just the code that imports
     it — since `sw.js`'s cache rules had no reason to be touched by the
     extraction itself and so silently went stale.
+21. Same session, immediately after: flagged that the landing page's
+    Current/Past grouping read only `trips.json`'s static `startDate`/
+    `endDate`, which meant a trip whose actual dates were edited inside
+    the app (adding/changing itinerary rows) wouldn't re-bucket on the
+    landing page until someone remembered to hand-update `trips.json` to
+    match — a real, if minor, staleness gap. Discussed three options
+    (fetch live Firebase data per trip via plain REST; have `app.js` write
+    a computed date-range field back to Firebase for a lighter per-trip
+    fetch; leave it as a documented manual step) and went with the first —
+    smallest change, no new write-side logic, reuses the exact min/max-of-
+    dated-days logic `updateTripStatus()` already uses in `app.js`. The
+    landing page now fetches each trip's `itinerary.json` via Firebase's
+    plain REST API (no SDK import — deliberately doesn't pull in
+    `app.js`/Firebase the way it always has, see Feature notes "Landing
+    page") and computes the range client-side; `trips.json`'s copy is now
+    only a fallback for when that fetch fails or a trip has no dated rows
+    yet. Verified the computed value against real Firebase data for the
+    Australia trip via REST (matched `trips.json` exactly, since nothing's
+    actually changed yet — this confirms no regression today, not that
+    the live-tracking behavior has been exercised against an actual edit)
+    and `node --check` on the extracted script. **Not verified in an
+    actual browser** — Claude in Chrome wasn't connected this session
+    either, so real-browser CORS behavior against the Firebase REST
+    endpoint (publicly documented as CORS-enabled for reads, but not
+    exercised here) is unconfirmed — folded into the existing
+    live-browser-verification item under "Still open."
 
 ## Trips so far
 
@@ -837,20 +867,26 @@ since that card was already built as an HTML template string inside
 
 ## Still open / natural next steps
 
-- **Live-browser verification of rounds 16-18's changes** (see History
-  #16, #17, #18) — open the site root and confirm the landing page shows
-  `australia-dec-2026` under "Current Trips" and that the link works, then
-  open `australia-dec-2026/` itself and confirm: the page loads with no
+- **Live-browser verification of rounds 16-21's changes** (see History
+  #16-#21) — open the site root and confirm the landing page shows
+  `australia-dec-2026` under "Current Trips" and that the link works,
+  confirm no CORS errors in the console from the new per-trip
+  `itinerary.json` REST fetches (History #21), then open
+  `australia-dec-2026/` itself and confirm: the page loads with no
   console errors, Firebase sync still works, weather/map/drive-time still
   render (once within range of a dated stop), the new "reset to auto"
   coords button and "Other…" currency input behave, and — hardest to fake
   headlessly — the offline write queue actually queues a write while
-  devtools is set to offline, then sends it once back online. This used to
-  point at `singapore-aug-2026/` for the weather/countdown checks
-  specifically since it was the only trip with dates close enough to
-  today to actually exercise them — now that it's deleted (History #19),
-  those specific checks may need a temporary itinerary day with a near-
-  term date added to `australia-dec-2026` to exercise, then removed after.
+  devtools is set to offline, then sends it once back online. Also worth
+  actually editing the Australia trip's itinerary dates and confirming the
+  landing page's Current/Past grouping picks up the change without a
+  `trips.json` edit — the specific behavior History #21 was meant to fix.
+  This used to point at `singapore-aug-2026/` for the weather/countdown
+  checks specifically since it was the only trip with dates close enough
+  to today to actually exercise them — now that it's deleted (History
+  #19), those specific checks may need a temporary itinerary day with a
+  near-term date added to `australia-dec-2026` to exercise, then removed
+  after.
   All three rounds' verification was thorough on the static/syntactic side
   but nothing was exercised in a real browser against real Firebase.
 - Real verification pass before the Australia trip is actually real:
