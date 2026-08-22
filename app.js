@@ -1004,22 +1004,26 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
         <div class="field"><span class="field-label">Name</span><span contenteditable="true" data-f="name"></span></div>
         <div class="field">
           <span class="field-label">Check-in</span>
-          <div class="date-weekday" data-weekday></div>
+          <div class="date-weekday" data-weekday-for="checkIn"></div>
           <input class="day-date-input" type="date" data-f="checkIn">
         </div>
-        <div class="field"><span class="field-label">Check-out</span><input class="day-date-input" type="date" data-f="checkOut"></div>
+        <div class="field">
+          <span class="field-label">Check-out</span>
+          <div class="date-weekday" data-weekday-for="checkOut"></div>
+          <input class="day-date-input" type="date" data-f="checkOut">
+        </div>
         <div class="field"><span class="field-label">Confirmation</span><span contenteditable="true" data-f="confirmation"></span></div>
         <div class="field"><span class="field-label">Document link (booking confirmation PDF)</span><span contenteditable="true" data-f="pdfUrl"></span></div>
         <div class="card-links"><a class="nav-link" data-pdf-link target="_blank" rel="noopener" style="display:none;">📄 View PDF →</a></div>
         <div class="field"><span class="field-label">Notes</span><span contenteditable="true" data-f="notes"></span></div>
         <button class="remove-row" data-remove>− Remove</button>`;
-      const weekdayEl = card.querySelector('[data-weekday]');
-      weekdayEl.textContent = formatWeekday(a.checkIn);
+      card.querySelector('[data-weekday-for="checkIn"]').textContent = formatWeekday(a.checkIn);
+      card.querySelector('[data-weekday-for="checkOut"]').textContent = formatWeekday(a.checkOut);
       card.querySelectorAll('input[type="date"][data-f]').forEach(el => {
         el.value = a[el.dataset.f] ?? '';
         el.addEventListener('change', e => {
           writeValue(`trips/${tripId}/accommodations/${key}/${el.dataset.f}`, e.target.value);
-          if (el.dataset.f === 'checkIn') weekdayEl.textContent = formatWeekday(e.target.value);
+          card.querySelector(`[data-weekday-for="${el.dataset.f}"]`).textContent = formatWeekday(e.target.value);
         });
       });
       card.querySelectorAll('span[data-f]').forEach(el => {
@@ -1047,24 +1051,28 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
         <div class="field"><span class="field-label">Company</span><span contenteditable="true" data-f="company"></span></div>
         <div class="field">
           <span class="field-label">Pickup</span>
-          <div class="date-weekday" data-weekday></div>
+          <div class="date-weekday" data-weekday-for="pickupDate"></div>
           <input class="day-date-input" type="date" data-f="pickupDate">
         </div>
         <div class="field"><span class="field-label">Pickup location</span><span contenteditable="true" data-f="pickupLocation"></span></div>
-        <div class="field"><span class="field-label">Drop-off</span><input class="day-date-input" type="date" data-f="dropoffDate"></div>
+        <div class="field">
+          <span class="field-label">Drop-off</span>
+          <div class="date-weekday" data-weekday-for="dropoffDate"></div>
+          <input class="day-date-input" type="date" data-f="dropoffDate">
+        </div>
         <div class="field"><span class="field-label">Drop-off location</span><span contenteditable="true" data-f="dropoffLocation"></span></div>
         <div class="field"><span class="field-label">Confirmation</span><span contenteditable="true" data-f="confirmation"></span></div>
         <div class="field"><span class="field-label">Document link (booking / insurance PDF)</span><span contenteditable="true" data-f="pdfUrl"></span></div>
         <div class="card-links"><a class="nav-link" data-pdf-link target="_blank" rel="noopener" style="display:none;">📄 View PDF →</a></div>
         <div class="field"><span class="field-label">Notes</span><span contenteditable="true" data-f="notes"></span></div>
         <button class="remove-row" data-remove>− Remove</button>`;
-      const weekdayEl = card.querySelector('[data-weekday]');
-      weekdayEl.textContent = formatWeekday(c.pickupDate);
+      card.querySelector('[data-weekday-for="pickupDate"]').textContent = formatWeekday(c.pickupDate);
+      card.querySelector('[data-weekday-for="dropoffDate"]').textContent = formatWeekday(c.dropoffDate);
       card.querySelectorAll('input[type="date"][data-f]').forEach(el => {
         el.value = c[el.dataset.f] ?? '';
         el.addEventListener('change', e => {
           writeValue(`trips/${tripId}/carRental/${key}/${el.dataset.f}`, e.target.value);
-          if (el.dataset.f === 'pickupDate') weekdayEl.textContent = formatWeekday(e.target.value);
+          card.querySelector(`[data-weekday-for="${el.dataset.f}"]`).textContent = formatWeekday(e.target.value);
         });
       });
       card.querySelectorAll('span[data-f]').forEach(el => {
