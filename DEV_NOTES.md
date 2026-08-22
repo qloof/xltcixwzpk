@@ -652,6 +652,20 @@ since that card was already built as an HTML template string inside
   the property), so its pin is manually set to the nearest resolvable
   landmark (Kirishima Jingū Station) with `coordsManual: true` and a note
   on the card flagging it as approximate.
+  **Google Maps link (added History #25).** A second nav-app link next to
+  Waze on both Itinerary and Accommodations cards, `"Navigate in Google
+  Maps →"`, using Google's documented stable URL scheme
+  (`https://www.google.com/maps/dir/?api=1&destination={lat},{lon}`) —
+  opens the native app on mobile if installed, falls back to the web app
+  otherwise. No new data fields: it's derived from the same `lat`/`lon`
+  already tracked for Waze, so the per-card `updateWazeLink()` closure in
+  both `renderItinerary()` and `renderAccommodations()` was renamed to
+  `updateNavLinks()` and extended to set both links' `href`/visibility
+  together, rather than adding a second, separately-triggered function.
+  Same scope decision as Waze: not added to Car Rental, since pickup/
+  dropoff are plain text with no geocoding infrastructure at all — adding
+  a Maps link there would mean building that from scratch first, not
+  reusing anything that exists.
 
 ## Known limitations (already communicated to the user — don't "fix" silently)
 
@@ -1050,6 +1064,23 @@ since that card was already built as an HTML template string inside
     `pdfUrl`/`wirePdfLink` pattern for consistency. **Not verified in an
     actual browser this round** — same standing caveat as most of Kyushu's
     history (see "Still open").
+25. User asked for a "Navigate in Google Maps" button next to the existing
+    Waze one, on every place that already has a Waze link — confirmed via
+    a quick scope check that this meant Itinerary + Accommodations only,
+    matching Waze's existing footprint, not Car Rental (which has no
+    geocoding infrastructure at all — see "Waze link on Accommodations" in
+    Feature notes for why that was excluded originally). Pure additive UI:
+    added a second `<a data-gmaps>` link next to `<a data-waze>` in both
+    card templates, and renamed the per-card `updateWazeLink()` closure to
+    `updateNavLinks()` in both `renderItinerary()` and
+    `renderAccommodations()`, extending it to set both links' `href` from
+    the same `lat`/`lon` inputs rather than adding a second function with
+    its own call sites (see Feature notes "Google Maps link" for the URL
+    scheme used). No data model change — nothing new stored, both links
+    are pure UI derived from coordinates already tracked for Waze.
+    Verification: `node --check` passed; manually reviewed the rendered
+    template strings for both new elements. **Not verified in an actual
+    browser this round** — same standing caveat as History #24.
 
 ## Trips so far
 

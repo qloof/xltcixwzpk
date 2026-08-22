@@ -607,6 +607,7 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
           <button class="coords-toggle" type="button" data-toggle-coords>± coordinates</button>
           <button class="coords-toggle" type="button" data-reset-coords style="display:none;">↺ reset to auto</button>
           <a class="nav-link" data-waze target="_blank" rel="noopener" style="display:none;">Navigate in Waze →</a>
+          <a class="nav-link" data-gmaps target="_blank" rel="noopener" style="display:none;">Navigate in Google Maps →</a>
         </div>
         <div class="coords-row hidden">
           <span class="field-label" style="align-self:center;margin:0;">Coords</span>
@@ -623,18 +624,25 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
       const latInput = card.querySelector('[data-f="lat"]');
       const lonInput = card.querySelector('[data-f="lon"]');
       const wazeLink = card.querySelector('[data-waze]');
+      const gmapsLink = card.querySelector('[data-gmaps]');
       const weekdayEl = card.querySelector('[data-weekday]');
       const numericEl = card.querySelector('[data-numeric]');
       const geoFeedback = card.querySelector('[data-geocode-feedback]');
       const resetBtn = card.querySelector('[data-reset-coords]');
       resetBtn.style.display = day.coordsManual ? '' : 'none';
-      function updateWazeLink() {
+      // Drives both nav-app links off the same lat/lon — see DEV_NOTES
+      // "Navigate in Google Maps" for why this was extended rather than
+      // adding a second, separately-triggered function.
+      function updateNavLinks() {
         const lat = latInput.value, lon = lonInput.value;
         if (lat && lon) {
           wazeLink.href = `https://waze.com/ul?ll=${lat},${lon}&navigate=yes`;
           wazeLink.style.display = '';
+          gmapsLink.href = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
+          gmapsLink.style.display = '';
         } else {
           wazeLink.style.display = 'none';
+          gmapsLink.style.display = 'none';
         }
       }
       function updateDateDisplay(iso) {
@@ -674,7 +682,7 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
           showGeoFeedback('');
           latInput.value = geo.lat;
           lonInput.value = geo.lon;
-          updateWazeLink();
+          updateNavLinks();
           writeValue(`trips/${tripId}/itinerary/${key}/lat`, geo.lat);
           writeValue(`trips/${tripId}/itinerary/${key}/lon`, geo.lon);
           attachWeather(card.querySelector('[data-weather]'), geo.lat, geo.lon, day.date);
@@ -693,7 +701,7 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
           // edits stop auto-overwriting it — see the geocode note above.
           writeValue(`trips/${tripId}/itinerary/${key}/coordsManual`, true);
           resetBtn.style.display = '';
-          updateWazeLink();
+          updateNavLinks();
         });
       });
       card.querySelector('[data-toggle-coords]').onclick = () => card.querySelector('.coords-row').classList.toggle('hidden');
@@ -716,7 +724,7 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
           showGeoFeedback('');
           latInput.value = geo.lat;
           lonInput.value = geo.lon;
-          updateWazeLink();
+          updateNavLinks();
           writeValue(`trips/${tripId}/itinerary/${key}/lat`, geo.lat);
           writeValue(`trips/${tripId}/itinerary/${key}/lon`, geo.lon);
           attachWeather(card.querySelector('[data-weather]'), geo.lat, geo.lon, day.date);
@@ -736,7 +744,7 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
 
       list.appendChild(card);
 
-      updateWazeLink();
+      updateNavLinks();
       attachWeather(card.querySelector('[data-weather]'), day.lat, day.lon, day.date);
       const nextDay = entries[i + 1]?.[1];
       attachDriveTime(card.querySelector('[data-drive]'), day.lat, day.lon, nextDay?.lat, nextDay?.lon, nextDay?.location);
@@ -1012,6 +1020,7 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
           <button class="coords-toggle" type="button" data-toggle-coords>± coordinates</button>
           <button class="coords-toggle" type="button" data-reset-coords style="display:none;">↺ reset to auto</button>
           <a class="nav-link" data-waze target="_blank" rel="noopener" style="display:none;">Navigate in Waze →</a>
+          <a class="nav-link" data-gmaps target="_blank" rel="noopener" style="display:none;">Navigate in Google Maps →</a>
         </div>
         <div class="coords-row hidden">
           <span class="field-label" style="align-self:center;margin:0;">Coords</span>
@@ -1047,37 +1056,42 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
         commitOnBlur(el, `trips/${tripId}/accommodations/${key}/${el.dataset.f}`);
       });
 
-      // Waze navigation link — same auto-geocode-on-blur pattern as the
-      // itinerary card's own Location field (see renderItinerary() and
-      // DEV_NOTES "Location → coordinates"), applied to the accommodation's
-      // Name field instead, since that's this record's equivalent of "the
-      // place." Same coordsManual/geocodeSeq safeguards for the same
-      // reasons: a manually-pinned location must stop auto-overwriting, and
-      // a slower/older lookup response must not clobber a newer one.
+      // Nav links (Waze + Google Maps) — same auto-geocode-on-blur pattern
+      // as the itinerary card's own Location field (see renderItinerary()
+      // and DEV_NOTES "Location → coordinates"), applied to the
+      // accommodation's Name field instead, since that's this record's
+      // equivalent of "the place." Same coordsManual/geocodeSeq safeguards
+      // for the same reasons: a manually-pinned location must stop
+      // auto-overwriting, and a slower/older lookup response must not
+      // clobber a newer one.
       const nameEl = card.querySelector('[data-f="name"]');
       nameEl.textContent = a.name ?? '';
       const latInput = card.querySelector('[data-f="lat"]');
       const lonInput = card.querySelector('[data-f="lon"]');
       const wazeLink = card.querySelector('[data-waze]');
+      const gmapsLink = card.querySelector('[data-gmaps]');
       const geoFeedback = card.querySelector('[data-geocode-feedback]');
       const resetBtn = card.querySelector('[data-reset-coords]');
       resetBtn.style.display = a.coordsManual ? '' : 'none';
       latInput.value = a.lat ?? '';
       lonInput.value = a.lon ?? '';
-      function updateWazeLink() {
+      function updateNavLinks() {
         const lat = latInput.value, lon = lonInput.value;
         if (lat && lon) {
           wazeLink.href = `https://waze.com/ul?ll=${lat},${lon}&navigate=yes`;
           wazeLink.style.display = '';
+          gmapsLink.href = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
+          gmapsLink.style.display = '';
         } else {
           wazeLink.style.display = 'none';
+          gmapsLink.style.display = 'none';
         }
       }
       function showGeoFeedback(msg) {
         geoFeedback.textContent = msg;
         geoFeedback.classList.toggle('show', !!msg);
       }
-      updateWazeLink();
+      updateNavLinks();
       commitOnEnter(nameEl);
       let geocodeSeq = 0;
       nameEl.addEventListener('blur', () => {
@@ -1096,7 +1110,7 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
           showGeoFeedback('');
           latInput.value = geo.lat;
           lonInput.value = geo.lon;
-          updateWazeLink();
+          updateNavLinks();
           writeValue(`trips/${tripId}/accommodations/${key}/lat`, geo.lat);
           writeValue(`trips/${tripId}/accommodations/${key}/lon`, geo.lon);
         });
@@ -1116,7 +1130,7 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
           showGeoFeedback('');
           latInput.value = geo.lat;
           lonInput.value = geo.lon;
-          updateWazeLink();
+          updateNavLinks();
           writeValue(`trips/${tripId}/accommodations/${key}/lat`, geo.lat);
           writeValue(`trips/${tripId}/accommodations/${key}/lon`, geo.lon);
         });
@@ -1126,7 +1140,7 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
           writeValue(`trips/${tripId}/accommodations/${key}/${el.dataset.f}`, el.value);
           writeValue(`trips/${tripId}/accommodations/${key}/coordsManual`, true);
           resetBtn.style.display = '';
-          updateWazeLink();
+          updateNavLinks();
         });
       });
 
