@@ -55,7 +55,7 @@ const GENERIC_SEED = {
   },
   extras: [{ item: '[what needs tracking]', notes: '[details]' }],
   flights: [{ date: '', flightNo: '[e.g. TG410]', route: '[e.g. SIN → BKK]', depart: '', arrive: '', confirmation: '[PNR / booking ref]', pdfUrl: '', notes: '' }],
-  accommodations: [{ name: '[hotel / ryokan name]', checkIn: '', checkOut: '', confirmation: '[booking ref]', pdfUrl: '', notes: '' }],
+  accommodations: [{ name: '[hotel / ryokan name]', checkIn: '', checkOut: '', confirmation: '[booking ref]', pdfUrl: '', lat: '', lon: '', notes: '' }],
   carRental: [{ company: '[rental company]', pickupDate: '', pickupLocation: '', dropoffDate: '', dropoffLocation: '', confirmation: '', pdfUrl: '', notes: '' }],
 };
 
@@ -1002,6 +1002,17 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
       card.className = 'card';
       card.innerHTML = `
         <div class="field"><span class="field-label">Name</span><span contenteditable="true" data-f="name"></span></div>
+        <div class="geocode-feedback" data-geocode-feedback></div>
+        <div class="card-links">
+          <button class="coords-toggle" type="button" data-toggle-coords>± coordinates</button>
+          <button class="coords-toggle" type="button" data-reset-coords style="display:none;">↺ reset to auto</button>
+          <a class="nav-link" data-waze target="_blank" rel="noopener" style="display:none;">Navigate in Waze →</a>
+        </div>
+        <div class="coords-row hidden">
+          <span class="field-label" style="align-self:center;margin:0;">Coords</span>
+          <input type="number" step="any" placeholder="lat" data-f="lat">
+          <input type="number" step="any" placeholder="lon" data-f="lon">
+        </div>
         <div class="field">
           <span class="field-label">Check-in</span>
           <div class="date-weekday" data-weekday-for="checkIn"></div>
@@ -1026,10 +1037,94 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
           card.querySelector(`[data-weekday-for="${el.dataset.f}"]`).textContent = formatWeekday(e.target.value);
         });
       });
-      card.querySelectorAll('span[data-f]').forEach(el => {
+      card.querySelectorAll('span[data-f]:not([data-f="name"])').forEach(el => {
         el.textContent = a[el.dataset.f] ?? '';
         commitOnBlur(el, `trips/${tripId}/accommodations/${key}/${el.dataset.f}`);
       });
+
+      // Waze navigation link — same auto-geocode-on-blur pattern as the
+      // itinerary card's own Location field (see renderItinerary() and
+      // DEV_NOTES "Location → coordinates"), applied to the accommodation's
+      // Name field instead, since that's this record's equivalent of "the
+      // place." Same coordsManual/geocodeSeq safeguards for the same
+      // reasons: a manually-pinned location must stop auto-overwriting, and
+      // a slower/older lookup response must not clobber a newer one.
+      const nameEl = card.querySelector('[data-f="name"]');
+      nameEl.textContent = a.name ?? '';
+      const latInput = card.querySelector('[data-f="lat"]');
+      const lonInput = card.querySelector('[data-f="lon"]');
+      const wazeLink = card.querySelector('[data-waze]');
+      const geoFeedback = card.querySelector('[data-geocode-feedback]');
+      const resetBtn = card.querySelector('[data-reset-coords]');
+      resetBtn.style.display = a.coordsManual ? '' : 'none';
+      latInput.value = a.lat ?? '';
+      lonInput.value = a.lon ?? '';
+      function updateWazeLink() {
+        const lat = latInput.value, lon = lonInput.value;
+        if (lat && lon) {
+          wazeLink.href = `https://waze.com/ul?ll=${lat},${lon}&navigate=yes`;
+          wazeLink.style.display = '';
+        } else {
+          wazeLink.style.display = 'none';
+        }
+      }
+      function showGeoFeedback(msg) {
+        geoFeedback.textContent = msg;
+        geoFeedback.classList.toggle('show', !!msg);
+      }
+      updateWazeLink();
+      commitOnEnter(nameEl);
+      let geocodeSeq = 0;
+      nameEl.addEventListener('blur', () => {
+        const text = nameEl.textContent.trim();
+        writeValue(`trips/${tripId}/accommodations/${key}/name`, text);
+        flashSaved(nameEl);
+        if (!text || a.coordsManual) { showGeoFeedback(''); return; }
+        const mySeq = ++geocodeSeq;
+        showGeoFeedback('Locating…');
+        geocodeLocation(text).then(geo => {
+          if (mySeq !== geocodeSeq) return;
+          if (!geo) {
+            showGeoFeedback('Couldn’t find that place — set coordinates manually via “± coordinates” below');
+            return;
+          }
+          showGeoFeedback('');
+          latInput.value = geo.lat;
+          lonInput.value = geo.lon;
+          updateWazeLink();
+          writeValue(`trips/${tripId}/accommodations/${key}/lat`, geo.lat);
+          writeValue(`trips/${tripId}/accommodations/${key}/lon`, geo.lon);
+        });
+      });
+      card.querySelector('[data-toggle-coords]').onclick = () => card.querySelector('.coords-row').classList.toggle('hidden');
+      resetBtn.onclick = () => {
+        writeValue(`trips/${tripId}/accommodations/${key}/coordsManual`, false);
+        resetBtn.style.display = 'none';
+        const text = nameEl.textContent.trim();
+        if (!text) return;
+        showGeoFeedback('Locating…');
+        geocodeLocation(text).then(geo => {
+          if (!geo) {
+            showGeoFeedback('Couldn’t find that place — set coordinates manually via “± coordinates” below');
+            return;
+          }
+          showGeoFeedback('');
+          latInput.value = geo.lat;
+          lonInput.value = geo.lon;
+          updateWazeLink();
+          writeValue(`trips/${tripId}/accommodations/${key}/lat`, geo.lat);
+          writeValue(`trips/${tripId}/accommodations/${key}/lon`, geo.lon);
+        });
+      };
+      card.querySelectorAll('input[type="number"][data-f]').forEach(el => {
+        el.addEventListener('blur', () => {
+          writeValue(`trips/${tripId}/accommodations/${key}/${el.dataset.f}`, el.value);
+          writeValue(`trips/${tripId}/accommodations/${key}/coordsManual`, true);
+          resetBtn.style.display = '';
+          updateWazeLink();
+        });
+      });
+
       wirePdfLink(card, a.pdfUrl);
       card.querySelector('[data-remove]').onclick = () => dbSet(`trips/${tripId}/accommodations/${key}`, null);
       list.appendChild(card);
@@ -1037,7 +1132,7 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
   }
   document.getElementById('addAccommodation').onclick = () => {
     const key = push(child(tripRef, 'accommodations')).key;
-    writeValue(`trips/${tripId}/accommodations/${key}`, { name: '', checkIn: '', checkOut: '', confirmation: '', pdfUrl: '', notes: '' });
+    writeValue(`trips/${tripId}/accommodations/${key}`, { name: '', checkIn: '', checkOut: '', confirmation: '', pdfUrl: '', lat: '', lon: '', coordsManual: false, notes: '' });
   };
 
   function renderCarRental(carRental) {

@@ -637,6 +637,21 @@ since that card was already built as an HTML template string inside
   dashboard repo, so GitHub Pages serves them as ordinary static files with
   no extra hosting setup. Nothing stops a future trip's pdfUrl from
   pointing at an external link (Google Drive, etc.) instead.
+  **Waze link on Accommodations (added right after).** Reuses itinerary's
+  exact auto-geocode-on-blur pattern (`geocodeLocation()`, the
+  `coordsManual` flag, the `± coordinates` toggle, the `↺ reset to auto`
+  button, the `geocodeSeq` out-of-order-response guard — see "Location →
+  coordinates" above) against the accommodation's `name` field instead of a
+  separate location field, since the name (e.g. "Ryokan Sanga (Kurokawa
+  Onsen, Minamioguni, Kumamoto)") already serves as this record's "the
+  place." Not added to Flights or Car Rental — a flight has no single point
+  to navigate to, and no one's asked for one on a car rental. New fields:
+  `accommodations/{pushKey}/lat`, `lon`, `coordsManual` (same meaning as the
+  itinerary fields of the same name). For `kyushu-dec-2026`, Ryokan Sanga
+  geocodes cleanly via Nominatim; Ryokojin Sanso doesn't (no OSM entry for
+  the property), so its pin is manually set to the nearest resolvable
+  landmark (Kirishima Jingū Station) with `coordsManual: true` and a note
+  on the card flagging it as approximate.
 
 ## Known limitations (already communicated to the user — don't "fix" silently)
 
