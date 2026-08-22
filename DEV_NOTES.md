@@ -1045,3 +1045,23 @@ since that card was already built as an HTML template string inside
   geocoded against actual hotel/ryokan addresses — same "not yet verified"
   caveat the itinerary doc itself carries. Opening hours/closures and the
   IDP application are also still open (see the seeded Checklists tab).
+- **Kyushu — Ryokojin Sanso's Waze pin is a stand-in, not the real address.**
+  Nominatim has no OSM entry for the property itself, so its Accommodations
+  card is pinned to the nearest resolvable landmark (Kirishima Jingū
+  Station) with `coordsManual: true` and a note flagging it as approximate
+  (see "Waze link on Accommodations" in Feature notes). Replace with the
+  real address via the card's "± coordinates" toggle once available.
+- **Kyushu — the `[TBD]` hotel nights have no lat/lon.** Fukuoka (×2),
+  Nagasaki (×2), Kumamoto, Takachiho, and Kagoshima itinerary days all have
+  a real location name but no coordinates yet, since no specific hotel is
+  booked — weather/map/drive-time for those days stay blank until a real
+  stop (with coordinates) replaces the city-level placeholder.
+- **Kyushu — not yet verified in an actual browser at all.** History #22's
+  real-browser pass covered `australia-dec-2026/` and the landing page
+  only; `kyushu-dec-2026/` (including the new Bookings tab, the PDF links,
+  and the Ryokojin Sanso Waze pin) has only been checked via `node --check`,
+  DOM-id cross-reference, and direct Firebase REST reads — never opened in
+  a real browser/phone. Do that before trusting the sync/UI behavior fully.
+- Passenger names on both Thai Airways e-tickets (QUEK LONG FEN MR / LEE WEI
+  YI GWENDOLYN MISS) still need checking against passports exactly — flagged
+  in the flight records' notes and the w2 checklist, not yet confirmed.
