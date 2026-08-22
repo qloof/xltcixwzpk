@@ -989,13 +989,77 @@ since that card was already built as an HTML template string inside
     real Firebase sync (first-load seeding, the Bookings tab's add/sort/
     remove behavior) is unexercised until someone opens the live URL.
 
+24. User worked through choosing a Fukuoka Dec 18–19 hotel in conversation
+    (long shortlist, several ruled out — including catching that Richmond
+    Hotel Fukuoka Tenjin is fully closed for renovation through the whole
+    stay), landed on **Hotel Monte Hermana Fukuoka** (Agoda booking ID
+    2043617518), then asked to add it plus Day 1's places of interest to
+    the live dashboard. Wrote directly to the live Firebase data via REST
+    PATCH (not just re-seeding, since `kyushu-dec-2026` had already been
+    opened once — re-seeding only fires on first load, see Data model) —
+    added the hotel as a new Accommodations card with real geocoded
+    coordinates (Nominatim), added it to Contacts, and split the single
+    Dec 18 itinerary day into **4 same-date stops** (arrival/hotel
+    logistics, lunch at Taiho Ramen, Ohori Park/Fukuoka Castle,
+    Watanabe-dori Yatai dinner) using the existing `order` field — the
+    first real exercise of the "multiple stops sharing one date" feature
+    (History/Feature notes, "Manual reordering") for actual trip content
+    rather than a hypothetical. Each stop has real coordinates geocoded
+    via direct Nominatim queries (not through the app's own UI-driven
+    geocode-on-blur, since this was a REST write). Copied the hotel's
+    Agoda confirmation PDF into `kyushu-dec-2026/docs/`, committed, and
+    pushed (the user had to add a permission rule before `git push` was
+    allowed to run non-interactively — see "Environment note" below).
+    Also marked the already-cancelled Hankasou Seseragi duplicate booking
+    done in both the `w4` checklist and the Extras card (it had been sitting
+    checked=false / undated despite being resolved), and bumped the Budget
+    tab's lodging "actual" figure to include an estimated SGD conversion of
+    the hotel's JPY 16,468 charge (not a verified FX rate — flagged as such
+    to the user).
+    **Then**, user reported the Bookings tab's Flights cards only ever
+    linked one e-ticket PDF (Longfen's) — real gap, since Gwen's e-ticket
+    existed in `docs/` but nothing on the page could reach it. Root cause:
+    the Flights card template only ever had one `pdfUrl` field/link. Fixed
+    by generalizing `wirePdfLink(card, value)` to `wirePdfLink(card, value,
+    selector)` and adding a second field/link (`pdfUrl2`, "📄 View PDF
+    (co-traveler) →") to the Flights card only — not Accommodations or Car
+    Rental, since those don't have the same two-named-traveler-per-record
+    shape flights do. Backfilled `pdfUrl2` on all 4 Kyushu flight legs via
+    REST PATCH. `node --check` passed; committed and pushed separately from
+    the hotel/itinerary data change (that one was a pure Firebase data
+    write, no code, so had nothing to push).
+    **Then**, user asked for both e-ticket PDFs to be read for "gotchas."
+    Found two genuinely new, actionable items not previously in the
+    dashboard: (1) baggage allowance is asymmetric — 1 checked bag/pax
+    outbound (fare class K) vs. 2 PCS/pax on the return (fare class Q);
+    (2) THAI's smart-luggage rule — any battery-integrated checked bag
+    needs its batteries pulled and carried in the cabin. Added the baggage
+    note to the TG648/TG649 flight records' `notes` fields and a new
+    `dayBefore` checklist item for the battery rule, all via REST PATCH.
+    Cross-checked names/ticket numbers/PNR/fare total against what was
+    already recorded — no discrepancies found.
+    **Environment note**: `git push` was blocked by this session's
+    auto-mode permission classifier on the first attempt (a hard block,
+    not something asking again could clear) until the user added a
+    permission rule; documented here in case a future session hits the
+    same wall doing routine repo pushes for this project.
+    Verification this round: `node --check` on `app.js`; every REST PATCH
+    response body checked against the intended payload (Firebase REST
+    echoes back exactly what was written); DOM markup for the new
+    `pdfUrl2` field/link manually reviewed against the existing
+    `pdfUrl`/`wirePdfLink` pattern for consistency. **Not verified in an
+    actual browser this round** — same standing caveat as most of Kyushu's
+    history (see "Still open").
+
 ## Trips so far
 
 - `australia-dec-2026/` — draft, not booked/verified (see History #4).
   Per the Kyushu itinerary doc (2026-08-22), this trip is now dropped —
   leave it alone unless the user asks to clean it up.
-- `kyushu-dec-2026/` — real, booked trip (flights + both ryokans confirmed;
-  rental car pending — see Still open). Scaffolded History #23.
+- `kyushu-dec-2026/` — real, booked trip (flights + both ryokans + the
+  Dec 18–19 Fukuoka hotel confirmed; rental car and the Dec 28 hotel
+  pending — see Still open). Scaffolded History #23; Dec 18 fully
+  worked out History #24.
 - `singapore-aug-2026/` — deleted (see History #19). Was a deliberate live
   test trip (History #9), not a real planned trip; served its purpose
   across rounds 10-18 and was removed once no longer needed — repo files,
@@ -1041,27 +1105,42 @@ since that card was already built as an HTML template string inside
   card is seeded with `[TBD]` in the company field. Update it once
   confirmed — either by hand in the app (Bookings tab) or by re-running
   the relevant Firebase write.
-- Kyushu itinerary lat/lon are approximate city-center coordinates, not
-  geocoded against actual hotel/ryokan addresses — same "not yet verified"
-  caveat the itinerary doc itself carries. Opening hours/closures and the
-  IDP application are also still open (see the seeded Checklists tab).
+- Kyushu itinerary lat/lon are approximate city-center coordinates for
+  every day **except Dec 18**, which now has 4 real geocoded stops (see
+  History #24) — not geocoded against actual hotel/ryokan addresses for
+  the rest. Opening hours/closures and the IDP application are also still
+  open (see the seeded Checklists tab).
 - **Kyushu — Ryokojin Sanso's Waze pin is a stand-in, not the real address.**
   Nominatim has no OSM entry for the property itself, so its Accommodations
   card is pinned to the nearest resolvable landmark (Kirishima Jingū
   Station) with `coordsManual: true` and a note flagging it as approximate
   (see "Waze link on Accommodations" in Feature notes). Replace with the
   real address via the card's "± coordinates" toggle once available.
-- **Kyushu — the `[TBD]` hotel nights have no lat/lon.** Fukuoka (×2),
-  Nagasaki (×2), Kumamoto, Takachiho, and Kagoshima itinerary days all have
-  a real location name but no coordinates yet, since no specific hotel is
-  booked — weather/map/drive-time for those days stay blank until a real
-  stop (with coordinates) replaces the city-level placeholder.
+- **Kyushu — most `[TBD]` hotel nights still have no lat/lon.** Nagasaki
+  (×2), Kumamoto, Takachiho, and Kagoshima itinerary days all have a real
+  location name but no coordinates yet, since no specific hotel is booked
+  — weather/map/drive-time for those days stay blank until a real stop
+  (with coordinates) replaces the city-level placeholder. **Dec 18
+  (Fukuoka) is now resolved** — see History #24. **Dec 28 is also still
+  open**: the plan moved from a Fukuoka-city last night to Dazaifu/
+  Chikushino (Futsukaichi Onsen) per the planning doc
+  (`kyushu-dec-2026-itinerary.md`), but no specific accommodation has been
+  chosen there yet, and the live dashboard's Dec 28 itinerary day still
+  says the old "Fukuoka hotel [TBD], last yatai dinner" plan — that day's
+  card needs updating to match the planning doc once a Futsukaichi
+  property is picked.
 - **Kyushu — not yet verified in an actual browser at all.** History #22's
   real-browser pass covered `australia-dec-2026/` and the landing page
-  only; `kyushu-dec-2026/` (including the new Bookings tab, the PDF links,
-  and the Ryokojin Sanso Waze pin) has only been checked via `node --check`,
-  DOM-id cross-reference, and direct Firebase REST reads — never opened in
-  a real browser/phone. Do that before trusting the sync/UI behavior fully.
+  only; `kyushu-dec-2026/` (including the Bookings tab, the PDF links —
+  now two per flight card, see History #24 — and the Ryokojin Sanso Waze
+  pin) has only been checked via `node --check`, DOM-id cross-reference,
+  and direct Firebase REST reads — never opened in a real browser/phone.
+  Do that before trusting the sync/UI behavior fully, especially the new
+  `pdfUrl2` co-traveler link and the 4-stops-on-one-date Dec 18 card
+  (first real use of same-date multi-stop ordering with actual content).
 - Passenger names on both Thai Airways e-tickets (QUEK LONG FEN MR / LEE WEI
   YI GWENDOLYN MISS) still need checking against passports exactly — flagged
-  in the flight records' notes and the w2 checklist, not yet confirmed.
+  in the flight records' notes and the w2 checklist, not yet confirmed. Both
+  e-tickets were read in full this session (History #24) and the names
+  match what's already recorded in the dashboard, but that's not the same
+  as checking them against the actual passports.
