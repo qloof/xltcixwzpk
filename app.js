@@ -54,9 +54,9 @@ const GENERIC_SEED = {
     misc:       { label: 'Misc / buffer',    budgeted: '', actual: '' },
   },
   extras: [{ item: '[what needs tracking]', notes: '[details]' }],
-  flights: [{ date: '', flightNo: '[e.g. TG410]', route: '[e.g. SIN → BKK]', depart: '', arrive: '', confirmation: '[PNR / booking ref]', notes: '' }],
-  accommodations: [{ name: '[hotel / ryokan name]', checkIn: '', checkOut: '', confirmation: '[booking ref]', notes: '' }],
-  carRental: [{ company: '[rental company]', pickupDate: '', pickupLocation: '', dropoffDate: '', dropoffLocation: '', confirmation: '', notes: '' }],
+  flights: [{ date: '', flightNo: '[e.g. TG410]', route: '[e.g. SIN → BKK]', depart: '', arrive: '', confirmation: '[PNR / booking ref]', pdfUrl: '', notes: '' }],
+  accommodations: [{ name: '[hotel / ryokan name]', checkIn: '', checkOut: '', confirmation: '[booking ref]', pdfUrl: '', notes: '' }],
+  carRental: [{ company: '[rental company]', pickupDate: '', pickupLocation: '', dropoffDate: '', dropoffLocation: '', confirmation: '', pdfUrl: '', notes: '' }],
 };
 
 // Small bits of CSS/markup added after the three trip HTML files already
@@ -938,6 +938,17 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
       return da < db ? -1 : da > db ? 1 : 0;
     });
   }
+  // Shows/hides the "View PDF" link a record card carries next to its
+  // pdfUrl field (see renderFlights/renderAccommodations/renderCarRental) —
+  // the field itself holds a plain URL (typically a link into this trip's
+  // docs/ folder in this repo, or any other URL a human pastes in), this
+  // just wires the clickable link up to whatever that value currently is.
+  function wirePdfLink(card, value) {
+    const link = card.querySelector('[data-pdf-link]');
+    if (value) { link.href = value; link.style.display = ''; }
+    else { link.style.display = 'none'; }
+  }
+
   function renderFlights(flights) {
     const list = document.getElementById('flightsList');
     if (focusedInside(list)) return;
@@ -946,28 +957,40 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
       const card = document.createElement('div');
       card.className = 'card';
       card.innerHTML = `
-        <div class="field"><span class="field-label">Date</span><input class="day-date-input" type="date" data-f="date"></div>
+        <div class="field">
+          <span class="field-label">Date</span>
+          <div class="date-weekday" data-weekday></div>
+          <input class="day-date-input" type="date" data-f="date">
+        </div>
         <div class="field"><span class="field-label">Flight</span><span contenteditable="true" data-f="flightNo"></span></div>
         <div class="field"><span class="field-label">Route</span><span contenteditable="true" data-f="route"></span></div>
         <div class="field"><span class="field-label">Depart</span><span contenteditable="true" data-f="depart"></span></div>
         <div class="field"><span class="field-label">Arrive</span><span contenteditable="true" data-f="arrive"></span></div>
         <div class="field"><span class="field-label">Confirmation / PNR</span><span contenteditable="true" data-f="confirmation"></span></div>
+        <div class="field"><span class="field-label">Document link (e-ticket PDF)</span><span contenteditable="true" data-f="pdfUrl"></span></div>
+        <div class="card-links"><a class="nav-link" data-pdf-link target="_blank" rel="noopener" style="display:none;">📄 View PDF →</a></div>
         <div class="field"><span class="field-label">Notes</span><span contenteditable="true" data-f="notes"></span></div>
         <button class="remove-row" data-remove>− Remove</button>`;
       const dateInput = card.querySelector('[data-f="date"]');
+      const weekdayEl = card.querySelector('[data-weekday]');
       dateInput.value = f.date ?? '';
-      dateInput.addEventListener('change', e => writeValue(`trips/${tripId}/flights/${key}/date`, e.target.value));
+      weekdayEl.textContent = formatWeekday(f.date);
+      dateInput.addEventListener('change', e => {
+        writeValue(`trips/${tripId}/flights/${key}/date`, e.target.value);
+        weekdayEl.textContent = formatWeekday(e.target.value);
+      });
       card.querySelectorAll('span[data-f]').forEach(el => {
         el.textContent = f[el.dataset.f] ?? '';
         commitOnBlur(el, `trips/${tripId}/flights/${key}/${el.dataset.f}`);
       });
+      wirePdfLink(card, f.pdfUrl);
       card.querySelector('[data-remove]').onclick = () => dbSet(`trips/${tripId}/flights/${key}`, null);
       list.appendChild(card);
     });
   }
   document.getElementById('addFlight').onclick = () => {
     const key = push(child(tripRef, 'flights')).key;
-    writeValue(`trips/${tripId}/flights/${key}`, { date: '', flightNo: '', route: '', depart: '', arrive: '', confirmation: '', notes: '' });
+    writeValue(`trips/${tripId}/flights/${key}`, { date: '', flightNo: '', route: '', depart: '', arrive: '', confirmation: '', pdfUrl: '', notes: '' });
   };
 
   function renderAccommodations(accommodations) {
@@ -979,26 +1002,38 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
       card.className = 'card';
       card.innerHTML = `
         <div class="field"><span class="field-label">Name</span><span contenteditable="true" data-f="name"></span></div>
-        <div class="field"><span class="field-label">Check-in</span><input class="day-date-input" type="date" data-f="checkIn"></div>
+        <div class="field">
+          <span class="field-label">Check-in</span>
+          <div class="date-weekday" data-weekday></div>
+          <input class="day-date-input" type="date" data-f="checkIn">
+        </div>
         <div class="field"><span class="field-label">Check-out</span><input class="day-date-input" type="date" data-f="checkOut"></div>
         <div class="field"><span class="field-label">Confirmation</span><span contenteditable="true" data-f="confirmation"></span></div>
+        <div class="field"><span class="field-label">Document link (booking confirmation PDF)</span><span contenteditable="true" data-f="pdfUrl"></span></div>
+        <div class="card-links"><a class="nav-link" data-pdf-link target="_blank" rel="noopener" style="display:none;">📄 View PDF →</a></div>
         <div class="field"><span class="field-label">Notes</span><span contenteditable="true" data-f="notes"></span></div>
         <button class="remove-row" data-remove>− Remove</button>`;
+      const weekdayEl = card.querySelector('[data-weekday]');
+      weekdayEl.textContent = formatWeekday(a.checkIn);
       card.querySelectorAll('input[type="date"][data-f]').forEach(el => {
         el.value = a[el.dataset.f] ?? '';
-        el.addEventListener('change', e => writeValue(`trips/${tripId}/accommodations/${key}/${el.dataset.f}`, e.target.value));
+        el.addEventListener('change', e => {
+          writeValue(`trips/${tripId}/accommodations/${key}/${el.dataset.f}`, e.target.value);
+          if (el.dataset.f === 'checkIn') weekdayEl.textContent = formatWeekday(e.target.value);
+        });
       });
       card.querySelectorAll('span[data-f]').forEach(el => {
         el.textContent = a[el.dataset.f] ?? '';
         commitOnBlur(el, `trips/${tripId}/accommodations/${key}/${el.dataset.f}`);
       });
+      wirePdfLink(card, a.pdfUrl);
       card.querySelector('[data-remove]').onclick = () => dbSet(`trips/${tripId}/accommodations/${key}`, null);
       list.appendChild(card);
     });
   }
   document.getElementById('addAccommodation').onclick = () => {
     const key = push(child(tripRef, 'accommodations')).key;
-    writeValue(`trips/${tripId}/accommodations/${key}`, { name: '', checkIn: '', checkOut: '', confirmation: '', notes: '' });
+    writeValue(`trips/${tripId}/accommodations/${key}`, { name: '', checkIn: '', checkOut: '', confirmation: '', pdfUrl: '', notes: '' });
   };
 
   function renderCarRental(carRental) {
@@ -1010,28 +1045,40 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
       card.className = 'card';
       card.innerHTML = `
         <div class="field"><span class="field-label">Company</span><span contenteditable="true" data-f="company"></span></div>
-        <div class="field"><span class="field-label">Pickup</span><input class="day-date-input" type="date" data-f="pickupDate"></div>
+        <div class="field">
+          <span class="field-label">Pickup</span>
+          <div class="date-weekday" data-weekday></div>
+          <input class="day-date-input" type="date" data-f="pickupDate">
+        </div>
         <div class="field"><span class="field-label">Pickup location</span><span contenteditable="true" data-f="pickupLocation"></span></div>
         <div class="field"><span class="field-label">Drop-off</span><input class="day-date-input" type="date" data-f="dropoffDate"></div>
         <div class="field"><span class="field-label">Drop-off location</span><span contenteditable="true" data-f="dropoffLocation"></span></div>
         <div class="field"><span class="field-label">Confirmation</span><span contenteditable="true" data-f="confirmation"></span></div>
+        <div class="field"><span class="field-label">Document link (booking / insurance PDF)</span><span contenteditable="true" data-f="pdfUrl"></span></div>
+        <div class="card-links"><a class="nav-link" data-pdf-link target="_blank" rel="noopener" style="display:none;">📄 View PDF →</a></div>
         <div class="field"><span class="field-label">Notes</span><span contenteditable="true" data-f="notes"></span></div>
         <button class="remove-row" data-remove>− Remove</button>`;
+      const weekdayEl = card.querySelector('[data-weekday]');
+      weekdayEl.textContent = formatWeekday(c.pickupDate);
       card.querySelectorAll('input[type="date"][data-f]').forEach(el => {
         el.value = c[el.dataset.f] ?? '';
-        el.addEventListener('change', e => writeValue(`trips/${tripId}/carRental/${key}/${el.dataset.f}`, e.target.value));
+        el.addEventListener('change', e => {
+          writeValue(`trips/${tripId}/carRental/${key}/${el.dataset.f}`, e.target.value);
+          if (el.dataset.f === 'pickupDate') weekdayEl.textContent = formatWeekday(e.target.value);
+        });
       });
       card.querySelectorAll('span[data-f]').forEach(el => {
         el.textContent = c[el.dataset.f] ?? '';
         commitOnBlur(el, `trips/${tripId}/carRental/${key}/${el.dataset.f}`);
       });
+      wirePdfLink(card, c.pdfUrl);
       card.querySelector('[data-remove]').onclick = () => dbSet(`trips/${tripId}/carRental/${key}`, null);
       list.appendChild(card);
     });
   }
   document.getElementById('addCarRental').onclick = () => {
     const key = push(child(tripRef, 'carRental')).key;
-    writeValue(`trips/${tripId}/carRental/${key}`, { company: '', pickupDate: '', pickupLocation: '', dropoffDate: '', dropoffLocation: '', confirmation: '', notes: '' });
+    writeValue(`trips/${tripId}/carRental/${key}`, { company: '', pickupDate: '', pickupLocation: '', dropoffDate: '', dropoffLocation: '', confirmation: '', pdfUrl: '', notes: '' });
   };
 
   document.querySelectorAll('.tab').forEach(tab => {

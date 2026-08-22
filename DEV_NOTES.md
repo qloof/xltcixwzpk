@@ -625,6 +625,18 @@ since that card was already built as an HTML template string inside
   is the reference/confirmation-number layer, same separation Contacts
   already has from itinerary. A Help tab entry was added alongside the other
   tabs' entries, same non-technical style as the rest of Help.
+  **Weekday + document link (added right after).** Each record's primary
+  date field also shows the weekday name above the date input (`.date-weekday`,
+  the same class/pattern `renderItinerary()`'s stacked weekday/numeric date
+  display uses), and every record has a `pdfUrl` text field plus a "📄 View
+  PDF →" link (`wirePdfLink()`, reusing `.nav-link` — the same class the
+  Waze link uses) that only shows once that field has a value. `pdfUrl` is
+  just a plain URL a human pastes in — for `kyushu-dec-2026` these point at
+  real files checked into `kyushu-dec-2026/docs/` in this repo (e-tickets,
+  Agoda confirmations), copied over from the planning folder outside the
+  dashboard repo, so GitHub Pages serves them as ordinary static files with
+  no extra hosting setup. Nothing stops a future trip's pdfUrl from
+  pointing at an external link (Google Drive, etc.) instead.
 
 ## Known limitations (already communicated to the user — don't "fix" silently)
 
