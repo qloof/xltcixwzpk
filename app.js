@@ -54,7 +54,7 @@ const GENERIC_SEED = {
     misc:       { label: 'Misc / buffer',    budgeted: '', actual: '' },
   },
   extras: [{ item: '[what needs tracking]', notes: '[details]' }],
-  flights: [{ date: '', flightNo: '[e.g. TG410]', route: '[e.g. SIN → BKK]', depart: '', arrive: '', confirmation: '[PNR / booking ref]', pdfUrl: '', notes: '' }],
+  flights: [{ date: '', flightNo: '[e.g. TG410]', route: '[e.g. SIN → BKK]', depart: '', arrive: '', confirmation: '[PNR / booking ref]', pdfUrl: '', pdfUrl2: '', notes: '' }],
   accommodations: [{ name: '[hotel / ryokan name]', checkIn: '', checkOut: '', confirmation: '[booking ref]', pdfUrl: '', lat: '', lon: '', notes: '' }],
   carRental: [{ company: '[rental company]', pickupDate: '', pickupLocation: '', dropoffDate: '', dropoffLocation: '', confirmation: '', pdfUrl: '', notes: '' }],
 };
@@ -943,8 +943,8 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
   // the field itself holds a plain URL (typically a link into this trip's
   // docs/ folder in this repo, or any other URL a human pastes in), this
   // just wires the clickable link up to whatever that value currently is.
-  function wirePdfLink(card, value) {
-    const link = card.querySelector('[data-pdf-link]');
+  function wirePdfLink(card, value, selector = '[data-pdf-link]') {
+    const link = card.querySelector(selector);
     if (value) { link.href = value; link.style.display = ''; }
     else { link.style.display = 'none'; }
   }
@@ -968,7 +968,11 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
         <div class="field"><span class="field-label">Arrive</span><span contenteditable="true" data-f="arrive"></span></div>
         <div class="field"><span class="field-label">Confirmation / PNR</span><span contenteditable="true" data-f="confirmation"></span></div>
         <div class="field"><span class="field-label">Document link (e-ticket PDF)</span><span contenteditable="true" data-f="pdfUrl"></span></div>
-        <div class="card-links"><a class="nav-link" data-pdf-link target="_blank" rel="noopener" style="display:none;">📄 View PDF →</a></div>
+        <div class="field"><span class="field-label">Document link (co-traveler's e-ticket PDF)</span><span contenteditable="true" data-f="pdfUrl2"></span></div>
+        <div class="card-links">
+          <a class="nav-link" data-pdf-link target="_blank" rel="noopener" style="display:none;">📄 View PDF →</a>
+          <a class="nav-link" data-pdf-link2 target="_blank" rel="noopener" style="display:none;">📄 View PDF (co-traveler) →</a>
+        </div>
         <div class="field"><span class="field-label">Notes</span><span contenteditable="true" data-f="notes"></span></div>
         <button class="remove-row" data-remove>− Remove</button>`;
       const dateInput = card.querySelector('[data-f="date"]');
@@ -983,14 +987,15 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
         el.textContent = f[el.dataset.f] ?? '';
         commitOnBlur(el, `trips/${tripId}/flights/${key}/${el.dataset.f}`);
       });
-      wirePdfLink(card, f.pdfUrl);
+      wirePdfLink(card, f.pdfUrl, '[data-pdf-link]');
+      wirePdfLink(card, f.pdfUrl2, '[data-pdf-link2]');
       card.querySelector('[data-remove]').onclick = () => dbSet(`trips/${tripId}/flights/${key}`, null);
       list.appendChild(card);
     });
   }
   document.getElementById('addFlight').onclick = () => {
     const key = push(child(tripRef, 'flights')).key;
-    writeValue(`trips/${tripId}/flights/${key}`, { date: '', flightNo: '', route: '', depart: '', arrive: '', confirmation: '', pdfUrl: '', notes: '' });
+    writeValue(`trips/${tripId}/flights/${key}`, { date: '', flightNo: '', route: '', depart: '', arrive: '', confirmation: '', pdfUrl: '', pdfUrl2: '', notes: '' });
   };
 
   function renderAccommodations(accommodations) {
