@@ -54,6 +54,9 @@ const GENERIC_SEED = {
     misc:       { label: 'Misc / buffer',    budgeted: '', actual: '' },
   },
   extras: [{ item: '[what needs tracking]', notes: '[details]' }],
+  flights: [{ date: '', flightNo: '[e.g. TG410]', route: '[e.g. SIN → BKK]', depart: '', arrive: '', confirmation: '[PNR / booking ref]', notes: '' }],
+  accommodations: [{ name: '[hotel / ryokan name]', checkIn: '', checkOut: '', confirmation: '[booking ref]', notes: '' }],
+  carRental: [{ company: '[rental company]', pickupDate: '', pickupLocation: '', dropoffDate: '', dropoffLocation: '', confirmation: '', notes: '' }],
 };
 
 // Small bits of CSS/markup added after the three trip HTML files already
@@ -353,6 +356,9 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
       budget: SEED.budget,
       contacts: {},
       extras: {},
+      flights: {},
+      accommodations: {},
+      carRental: {},
     };
     SEED.itineraryDays.forEach(day => {
       const key = push(child(tripRef, 'itinerary')).key;
@@ -371,6 +377,18 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
     SEED.extras.forEach(x => {
       const key = push(child(tripRef, 'extras')).key;
       seeded.extras[key] = x;
+    });
+    (SEED.flights || []).forEach(f => {
+      const key = push(child(tripRef, 'flights')).key;
+      seeded.flights[key] = f;
+    });
+    (SEED.accommodations || []).forEach(a => {
+      const key = push(child(tripRef, 'accommodations')).key;
+      seeded.accommodations[key] = a;
+    });
+    (SEED.carRental || []).forEach(c => {
+      const key = push(child(tripRef, 'carRental')).key;
+      seeded.carRental[key] = c;
     });
     set(tripRef, seeded);
   });
@@ -426,6 +444,9 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
     renderBudget(data.budget || {}, data.budgetCurrency || HOME_CURRENCY);
     renderContacts(data.contacts || {});
     renderExtras(data.extras || {});
+    renderFlights(data.flights || {});
+    renderAccommodations(data.accommodations || {});
+    renderCarRental(data.carRental || {});
   }
 
   // Turns the static "Status: Planning" badge into a live countdown/progress
@@ -896,6 +917,121 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
   document.getElementById('addExtra').onclick = () => {
     const key = push(child(tripRef, 'extras')).key;
     writeValue(`trips/${tripId}/extras/${key}`, { item: '', notes: '' });
+  };
+
+  // ---- Bookings tab: Flights / Accommodations / Car Rental ----
+  // Kept as one tab with three subsections (see the CSS comment on
+  // `.panel section + section`) rather than three top-level tabs — the tab
+  // bar is already 7 wide on a phone screen, same reasoning DEV_NOTES
+  // documents for why per-person packing lists became Checklists tiers
+  // instead of their own tab. Each record type sorts by its own primary
+  // date field (not creation order, unlike Contacts/Extras) so the cards
+  // read chronologically — useful for "what's next" while actually
+  // traveling. Date fields are real `<input type="date">` elements
+  // (reusing `.day-date-input`, the same class/pattern renderItinerary()
+  // uses for its date input) rather than contenteditable text, for the same
+  // reason itinerary's own date field had to move off free text: sorting
+  // needs a real ISO value, not whatever a human happens to type.
+  function sortByDate(entries, field) {
+    return entries.sort(([, a], [, b]) => {
+      const da = a[field] || '9999-99-99', db = b[field] || '9999-99-99';
+      return da < db ? -1 : da > db ? 1 : 0;
+    });
+  }
+  function renderFlights(flights) {
+    const list = document.getElementById('flightsList');
+    if (focusedInside(list)) return;
+    list.innerHTML = '';
+    sortByDate(Object.entries(flights), 'date').forEach(([key, f]) => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <div class="field"><span class="field-label">Date</span><input class="day-date-input" type="date" data-f="date"></div>
+        <div class="field"><span class="field-label">Flight</span><span contenteditable="true" data-f="flightNo"></span></div>
+        <div class="field"><span class="field-label">Route</span><span contenteditable="true" data-f="route"></span></div>
+        <div class="field"><span class="field-label">Depart</span><span contenteditable="true" data-f="depart"></span></div>
+        <div class="field"><span class="field-label">Arrive</span><span contenteditable="true" data-f="arrive"></span></div>
+        <div class="field"><span class="field-label">Confirmation / PNR</span><span contenteditable="true" data-f="confirmation"></span></div>
+        <div class="field"><span class="field-label">Notes</span><span contenteditable="true" data-f="notes"></span></div>
+        <button class="remove-row" data-remove>− Remove</button>`;
+      const dateInput = card.querySelector('[data-f="date"]');
+      dateInput.value = f.date ?? '';
+      dateInput.addEventListener('change', e => writeValue(`trips/${tripId}/flights/${key}/date`, e.target.value));
+      card.querySelectorAll('span[data-f]').forEach(el => {
+        el.textContent = f[el.dataset.f] ?? '';
+        commitOnBlur(el, `trips/${tripId}/flights/${key}/${el.dataset.f}`);
+      });
+      card.querySelector('[data-remove]').onclick = () => dbSet(`trips/${tripId}/flights/${key}`, null);
+      list.appendChild(card);
+    });
+  }
+  document.getElementById('addFlight').onclick = () => {
+    const key = push(child(tripRef, 'flights')).key;
+    writeValue(`trips/${tripId}/flights/${key}`, { date: '', flightNo: '', route: '', depart: '', arrive: '', confirmation: '', notes: '' });
+  };
+
+  function renderAccommodations(accommodations) {
+    const list = document.getElementById('accommodationsList');
+    if (focusedInside(list)) return;
+    list.innerHTML = '';
+    sortByDate(Object.entries(accommodations), 'checkIn').forEach(([key, a]) => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <div class="field"><span class="field-label">Name</span><span contenteditable="true" data-f="name"></span></div>
+        <div class="field"><span class="field-label">Check-in</span><input class="day-date-input" type="date" data-f="checkIn"></div>
+        <div class="field"><span class="field-label">Check-out</span><input class="day-date-input" type="date" data-f="checkOut"></div>
+        <div class="field"><span class="field-label">Confirmation</span><span contenteditable="true" data-f="confirmation"></span></div>
+        <div class="field"><span class="field-label">Notes</span><span contenteditable="true" data-f="notes"></span></div>
+        <button class="remove-row" data-remove>− Remove</button>`;
+      card.querySelectorAll('input[type="date"][data-f]').forEach(el => {
+        el.value = a[el.dataset.f] ?? '';
+        el.addEventListener('change', e => writeValue(`trips/${tripId}/accommodations/${key}/${el.dataset.f}`, e.target.value));
+      });
+      card.querySelectorAll('span[data-f]').forEach(el => {
+        el.textContent = a[el.dataset.f] ?? '';
+        commitOnBlur(el, `trips/${tripId}/accommodations/${key}/${el.dataset.f}`);
+      });
+      card.querySelector('[data-remove]').onclick = () => dbSet(`trips/${tripId}/accommodations/${key}`, null);
+      list.appendChild(card);
+    });
+  }
+  document.getElementById('addAccommodation').onclick = () => {
+    const key = push(child(tripRef, 'accommodations')).key;
+    writeValue(`trips/${tripId}/accommodations/${key}`, { name: '', checkIn: '', checkOut: '', confirmation: '', notes: '' });
+  };
+
+  function renderCarRental(carRental) {
+    const list = document.getElementById('carRentalList');
+    if (focusedInside(list)) return;
+    list.innerHTML = '';
+    sortByDate(Object.entries(carRental), 'pickupDate').forEach(([key, c]) => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <div class="field"><span class="field-label">Company</span><span contenteditable="true" data-f="company"></span></div>
+        <div class="field"><span class="field-label">Pickup</span><input class="day-date-input" type="date" data-f="pickupDate"></div>
+        <div class="field"><span class="field-label">Pickup location</span><span contenteditable="true" data-f="pickupLocation"></span></div>
+        <div class="field"><span class="field-label">Drop-off</span><input class="day-date-input" type="date" data-f="dropoffDate"></div>
+        <div class="field"><span class="field-label">Drop-off location</span><span contenteditable="true" data-f="dropoffLocation"></span></div>
+        <div class="field"><span class="field-label">Confirmation</span><span contenteditable="true" data-f="confirmation"></span></div>
+        <div class="field"><span class="field-label">Notes</span><span contenteditable="true" data-f="notes"></span></div>
+        <button class="remove-row" data-remove>− Remove</button>`;
+      card.querySelectorAll('input[type="date"][data-f]').forEach(el => {
+        el.value = c[el.dataset.f] ?? '';
+        el.addEventListener('change', e => writeValue(`trips/${tripId}/carRental/${key}/${el.dataset.f}`, e.target.value));
+      });
+      card.querySelectorAll('span[data-f]').forEach(el => {
+        el.textContent = c[el.dataset.f] ?? '';
+        commitOnBlur(el, `trips/${tripId}/carRental/${key}/${el.dataset.f}`);
+      });
+      card.querySelector('[data-remove]').onclick = () => dbSet(`trips/${tripId}/carRental/${key}`, null);
+      list.appendChild(card);
+    });
+  }
+  document.getElementById('addCarRental').onclick = () => {
+    const key = push(child(tripRef, 'carRental')).key;
+    writeValue(`trips/${tripId}/carRental/${key}`, { company: '', pickupDate: '', pickupLocation: '', dropoffDate: '', dropoffLocation: '', confirmation: '', notes: '' });
   };
 
   document.querySelectorAll('.tab').forEach(tab => {

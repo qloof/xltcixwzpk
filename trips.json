@@ -1,3 +1,16 @@
 [
-  { "slug": "australia-dec-2026", "title": "Australia Road Trip", "subtitle": "Sydney → Blue Mountains → Melbourne → Great Ocean Road · Dec 8 – Dec 21, 2026 (draft)", "startDate": "2026-12-08", "endDate": "2026-12-21" }
+  {
+    "slug": "australia-dec-2026",
+    "title": "Australia Road Trip",
+    "subtitle": "Sydney → Blue Mountains → Melbourne → Great Ocean Road · Dec 8 – Dec 21, 2026 (draft)",
+    "startDate": "2026-12-08",
+    "endDate": "2026-12-21"
+  },
+  {
+    "slug": "kyushu-dec-2026",
+    "title": "Kyushu Road Trip",
+    "subtitle": "Fukuoka loop — Nagasaki, Kumamoto, Takachiho, Kurokawa, Kirishima, Kagoshima · Dec 17 – 29, 2026",
+    "startDate": "2026-12-17",
+    "endDate": "2026-12-29"
+  }
 ]

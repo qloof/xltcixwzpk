@@ -86,6 +86,17 @@ restyle from scratch on future changes.
                 immediately).
   contacts/{pushKey}/  { name, ref }
   extras/{pushKey}/    { item, notes }
+  flights/{pushKey}/
+    date, flightNo, route, depart, arrive, confirmation, notes
+    date is the sort key (ISO, same reasoning as itinerary's date — see
+    "Bookings tab" in Feature notes).
+  accommodations/{pushKey}/
+    name, checkIn, checkOut, confirmation, notes
+    checkIn is the sort key.
+  carRental/{pushKey}/
+    company, pickupDate, pickupLocation, dropoffDate, dropoffLocation,
+    confirmation, notes
+    pickupDate is the sort key.
 ```
 
 `{pushKey}` = Firebase `push()` ID (chronological by creation, used as
@@ -589,6 +600,32 @@ since that card was already built as an HTML template string inside
   (`sectionEl(..., false)`) — the point of Past Trips is to get out of the
   way once there are several.
 
+- **Bookings tab (Flights / Accommodations / Car Rental).** One tab, three
+  subsections in it (`.panel section + section` gives each its own spacing) —
+  not three separate top-level tabs. Considered and rejected: three new tabs,
+  same reasoning already used to reject a new top-level tab for packing
+  lists (see "Two packing lists" above) — the tab bar is already 7 items wide
+  on a phone screen, and going to 10 fights that constraint directly. Instead
+  this follows the Checklists precedent: multiple sub-groups inside one tab.
+  Each record type (`renderFlights()`/`renderAccommodations()`/
+  `renderCarRental()` in `app.js`) is built from the same card/field-label
+  building blocks as Contacts/Extras, but **sorts by its own primary date
+  field** (flight `date`, accommodation `checkIn`, car rental `pickupDate`)
+  rather than creation order — the point of this tab is quick lookup while
+  actually traveling ("what's my next confirmation number"), so chronological
+  order matters here in a way it doesn't for Contacts/Extras. Date fields are
+  real `<input type="date">` elements reusing `.day-date-input` (the same
+  class/pattern `renderItinerary()`'s own date input uses), not
+  contenteditable text — same reason itinerary's `date` field had to move off
+  free text (see Data model): sorting needs a real ISO value. Icons in each
+  subsection heading (✈/🏨/🚗) reuse the existing convention of a plain emoji
+  prefix already established by drive-time's 🚗 line, not a new icon system.
+  Kept deliberately separate from the itinerary's existing free-text
+  `lodging` field — itinerary stays the at-a-glance day-by-day plan, Bookings
+  is the reference/confirmation-number layer, same separation Contacts
+  already has from itinerary. A Help tab entry was added alongside the other
+  tabs' entries, same non-technical style as the rest of Help.
+
 ## Known limitations (already communicated to the user — don't "fix" silently)
 
 - No auth; anyone with a trip's URL can read/write it.
@@ -889,9 +926,49 @@ since that card was already built as an HTML template string inside
     broad "nothing verified in a browser" framing standing now that most
     of it has been.
 
+23. User asked for a "Bookings" tab (Flights / Accommodations / Car Rental)
+    to surface real booking confirmations that had, until now, only lived in
+    planning `.md` files (`kyushu-dec-2026/*.md`, outside the dashboard
+    repo), and asked for a real IA pass rather than a bolted-on add.
+    Confirmed with the user up front: one tab not three (tab-bar-width
+    constraint, see Feature notes), built into the shared engine (not
+    Kyushu-only), and to scaffold `kyushu-dec-2026/` as a real trip in the
+    same round, seeded with the actual flight/ryokan/rental-car data from
+    `booking-confirmations.md`. Built the tab (see Feature notes "Bookings
+    tab" for the full design rationale), propagated it to `app.js`,
+    `template/index.html`, and `australia-dec-2026/index.html` (engine
+    plumbing only — Australia's own trip content untouched; per the Kyushu
+    itinerary doc, Australia is now stale/dropped and left alone). Also
+    added `flights`/`accommodations`/`carRental` to `GENERIC_SEED` and the
+    first-load seeding block, so a brand-new trip picks the feature up too.
+    Scaffolded `kyushu-dec-2026/` via `scripts/new-trip.mjs` from a seed
+    JSON built from the two Kyushu planning docs — real flight legs (Thai
+    Airways PNR FWTURC), both ryokan bookings, the pending Hi-Hi Car Rental
+    lead (marked `[TBD]`, not yet confirmed), and real itinerary/checklist/
+    budget/contacts data, including the "cancel duplicate Hankasou Seseragi
+    booking before 11 Dec 2026" action item as an Extras card. Itinerary
+    lat/lon are city-level approximations (Fukuoka, Nagasaki, Kumamoto,
+    Takachiho, Kurokawa Onsen, Kirishima, Kagoshima), not geocoded against
+    specific addresses — flagged as a known gap, same treatment as
+    Australia's unverified draft content.
+    Verification: `node --check` on `app.js` and the extracted module script
+    in `template/`, `australia-dec-2026/`, and `kyushu-dec-2026/`; a DOM-id
+    cross-reference confirming every new `getElementById()` call in `app.js`
+    has a matching element in all three HTML files; a byte-for-byte JSON
+    diff confirming the `tripSeed` baked into `kyushu-dec-2026/index.html`
+    matches the source seed file exactly; a local static-server smoke check
+    of the landing page, both trip pages, `app.js`, and `trips.json`.
+    **Not verified in an actual browser** — same caveat as prior rounds;
+    real Firebase sync (first-load seeding, the Bookings tab's add/sort/
+    remove behavior) is unexercised until someone opens the live URL.
+
 ## Trips so far
 
 - `australia-dec-2026/` — draft, not booked/verified (see History #4).
+  Per the Kyushu itinerary doc (2026-08-22), this trip is now dropped —
+  leave it alone unless the user asks to clean it up.
+- `kyushu-dec-2026/` — real, booked trip (flights + both ryokans confirmed;
+  rental car pending — see Still open). Scaffolded History #23.
 - `singapore-aug-2026/` — deleted (see History #19). Was a deliberate live
   test trip (History #9), not a real planned trip; served its purpose
   across rounds 10-18 and was removed once no longer needed — repo files,
@@ -932,3 +1009,12 @@ since that card was already built as an HTML template string inside
   against current Australian visa requirements for a Singapore passport.
   Confirm the correct visa product via a real search before the user
   relies on it (visa rules/names do change).
+- **Kyushu rental car — not yet booked.** Hi-Hi Car Rental's reply is still
+  pending as of scaffolding (History #23); the Bookings tab's Car Rental
+  card is seeded with `[TBD]` in the company field. Update it once
+  confirmed — either by hand in the app (Bookings tab) or by re-running
+  the relevant Firebase write.
+- Kyushu itinerary lat/lon are approximate city-center coordinates, not
+  geocoded against actual hotel/ryokan addresses — same "not yet verified"
+  caveat the itinerary doc itself carries. Opening hours/closures and the
+  IDP application are also still open (see the seeded Checklists tab).

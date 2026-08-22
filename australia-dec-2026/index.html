@@ -82,6 +82,11 @@
   .panel.active { display: block; }
   section h2 { font-family: var(--font-display); font-weight: 600; font-size: 20px; margin: 0 0 4px; }
   .section-hint { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-soft); margin: 0 0 16px; }
+  /* Only the Bookings panel currently stacks multiple <section>s in one
+     panel (Flights / Accommodations / Car Rental) — same "sub-groups
+     inside one tab" idea as Checklists' tiers, just built from cards
+     instead of a checklist tier, so it needs its own section spacing. */
+  .panel section + section { margin-top: 28px; }
 
   .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 12px; }
   .card.is-today { border-color: var(--brass); box-shadow: 0 0 0 1px var(--brass); }
@@ -208,6 +213,7 @@
     <button class="tab" data-panel="budget">Budget</button>
     <button class="tab" data-panel="contacts">Contacts</button>
     <button class="tab" data-panel="extras">Extras</button>
+    <button class="tab" data-panel="bookings">Bookings</button>
     <button class="tab" data-panel="help">Help</button>
   </nav>
 
@@ -309,6 +315,27 @@
     </section>
   </div>
 
+  <div class="panel" id="bookings">
+    <section>
+      <h2>✈ Flights</h2>
+      <p class="section-hint">One card per flight leg, listed in date order.</p>
+      <div id="flightsList"></div>
+      <button class="add-row" id="addFlight">+ Add flight</button>
+    </section>
+    <section>
+      <h2>🏨 Accommodations</h2>
+      <p class="section-hint">One card per stay, listed in check-in order.</p>
+      <div id="accommodationsList"></div>
+      <button class="add-row" id="addAccommodation">+ Add accommodation</button>
+    </section>
+    <section>
+      <h2>🚗 Car Rental</h2>
+      <p class="section-hint">One card per rental, listed in pickup order.</p>
+      <div id="carRentalList"></div>
+      <button class="add-row" id="addCarRental">+ Add car rental</button>
+    </section>
+  </div>
+
   <div class="panel" id="help">
     <section>
       <h2>How this page works</h2>
@@ -396,6 +423,12 @@
       <div class="help-item">
         <p class="help-title">Extras</p>
         <p>A catch-all for anything that doesn't fit elsewhere — pet-sitter instructions, medication reminders, whatever's specific to this trip.</p>
+      </div>
+
+      <div class="help-group-title">Bookings tab</div>
+      <div class="help-item">
+        <p class="help-title">Flights, Accommodations, Car Rental</p>
+        <p>Confirmed booking details, kept separate from the day-by-day plan in Itinerary so you can find a confirmation number or flight time quickly without scrolling through the whole trip. Each card holds one flight leg, one stay, or one rental — tap "+ Add" under any section for a blank one, and cards list themselves in date order automatically.</p>
       </div>
 
       <div class="help-group-title">Sharing this page</div>
