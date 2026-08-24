@@ -695,6 +695,8 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
       const geoFeedback = card.querySelector('[data-geocode-feedback]');
       const resetBtn = card.querySelector('[data-reset-coords]');
       resetBtn.style.display = day.coordsManual ? '' : 'none';
+      latInput.value = day.lat ?? '';
+      lonInput.value = day.lon ?? '';
       // Drives both nav-app links off the same lat/lon — see DEV_NOTES
       // "Navigate in Google Maps" for why this was extended rather than
       // adding a second, separately-triggered function.

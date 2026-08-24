@@ -84,6 +84,71 @@ restyle from scratch on future changes.
                 and clears `plan` — same lazy-repair spirit as `order`
                 above, not a batch migration script (none exists in this
                 repo — see History).
+
+                **STANDING RULE (2026-08-24): when planning a day, prefer
+                multiple `itinerary` cards (same `date`, different
+                `location`/`lat`/`lon`, ordered via the `order` field —
+                the pattern already used for Kyushu Dec 18: hotel, lunch,
+                park, dinner as 4 separate cards) over stuffing multiple
+                real destinations into one card's `planItems` list.
+                `planItems` is for sub-narrative *within* one destination
+                (arrival logistics, sequencing notes, caveats) — it has no
+                per-row coordinates, so bundling separate destinations into
+                it forfeits the map pin, Waze/Google Maps link, drive-time-
+                to-next-stop line, and weather that a real `itinerary` card
+                gets for free. Rule of thumb: if a stop has its own address/
+                landmark a human would navigate to independently, give it
+                its own card; if it's a logistics step of getting to/from a
+                card's destination (checkout, drive route, parking), it's a
+                `planItems` row under that destination's card instead. This
+                was gotten wrong once already (Kyushu Dec 19 was first
+                built as one card with 6 planItems rows including 3 real
+                destinations — Dejima, lunch, dinner — then rebuilt into
+                separate cards after the user caught it) — don't repeat
+                that mistake on new trips or new days.
+
+                **STANDING RULE (2026-08-24): write all clock times in
+                12-hour format with am/pm** (e.g. `8:10am`, `3:00pm`), not
+                24-hour (`08:10`, `15:00`), in every `planItems`/`location`/
+                `lodging`/`notes` string across `itinerary`, `flights`,
+                `accommodations`, and `carRental`. Longfen is "not used to
+                24h format." Applies to all future trips and days, not just
+                Kyushu — check new content before writing it rather than
+                converting after the fact.
+
+                **STANDING RULE (2026-08-24): lead each timed `planItems`
+                row with a rough time budget**, e.g. `~9:30am — Checkout
+                the hotel...`, the same way Kyushu Dec 18 (the very first
+                day built) did — that day is the reference pattern. Not
+                every row needs one: a row that's pure supporting detail
+                or a continuation of the row above it (an alternative
+                option, a caveat, background info) doesn't need its own
+                time. But any row that represents a distinct action/stop —
+                especially the first row of a multi-step logistics card
+                (checkout, drive, arrival) — should lead with one. This
+                slipped when the multi-card standing rule above was
+                adopted for Dec 19 onward: the cards were split correctly,
+                but the per-row time prefixes from Dec 18 weren't carried
+                forward, and it took the user explicitly flagging "the
+                formatting has broken off from 18/12" to catch it. Applies
+                to all future trips and days — check this when building a
+                new day, don't wait for it to be pointed out again.
+
+                **STANDING RULE (2026-08-24): check every card for a food
+                gap when building a day**, and fill genuine ones with 1-2
+                real, verified nearby food options. Not every card needs
+                this — most sightseeing cards already sit next to a
+                planned meal (e.g. a park between a lunch card and a
+                dinner card), and adding food there is just filler. Only
+                add it where there's an actual gap: a card with a long
+                visit and no food mentioned anywhere near it (e.g. a
+                ~2.5hr castle visit), or worse, a whole block of the day
+                with no meal planned at all (Kyushu Dec 22 had nothing
+                between a 2pm check-in and an 8pm show — that became its
+                own new dinner card, not just a note). Verify each
+                suggestion the same way as any other fact on this
+                trip — a real address/hours, not a vibe. Do this
+                proactively while building a day, don't wait to be asked.
     lodging, alt   free text
   checklists/{w4|w2|packingLongfen|packingGwen|dayBefore|onRoad}/{pushKey}/
     text, checked
@@ -1173,6 +1238,25 @@ since that card was already built as an HTML template string inside
     Verification: `node --check` passed. Still not loaded in an actual
     browser by Claude this round — the user's own screenshot is what
     caught this, and remains the only real verification so far.
+28. User asked "stop 23 has no navigate buttons?" while looking at the
+    live Kyushu Dec 23 cards. Root cause turned out to be site-wide, not
+    specific to Dec 23: `renderItinerary()`'s `updateNavLinks()` reads
+    `latInput.value`/`lonInput.value` to decide whether to show the Waze/
+    Google Maps links, but nothing ever set those `<input>` values from
+    `day.lat`/`day.lon` on initial render — unlike `renderAccommodations()`,
+    which does this correctly (`latInput.value = a.lat ?? ''`). The nav
+    buttons only ever appeared if a user manually re-typed a location or
+    clicked "reset to auto" during that browser session, since only those
+    code paths explicitly set `latInput.value`. This means the itinerary
+    tab's Navigate buttons have likely never shown on a fresh page load
+    for any day, on any trip, since the feature was built (History #25) —
+    not a Dec-23-specific bug, the user just happened to notice it there.
+    Fixed by adding the same two-line initialization
+    `renderAccommodations()` already had, right after the lat/lon `<input>`
+    refs are grabbed and before `updateNavLinks()` first runs. Verification:
+    `node --check` passed. **Not yet verified in an actual browser** — do
+    that before considering this fully closed, per the pattern in History
+    #26/#27 where a browser-only bug was missed by code review alone.
 
 - `australia-dec-2026/` — draft, not booked/verified (see History #4).
   Per the Kyushu itinerary doc (2026-08-22), this trip is now dropped —
