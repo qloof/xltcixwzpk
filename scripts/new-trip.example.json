@@ -5,7 +5,7 @@
     "days": "—"
   },
   "itineraryDays": [
-    { "date": "", "location": "[town / stop name]", "lat": "", "lon": "", "plan": "[main activity, booking ref if any]", "lodging": "[hotel / campsite, confirmation #]", "alt": "" }
+    { "date": "", "location": "[town / stop name]", "lat": "", "lon": "", "lodging": "[hotel / campsite, confirmation #]", "alt": "" }
   ],
   "checklists": {
     "w4": ["[e.g. confirm time off work]", "[e.g. book primary lodging]"],

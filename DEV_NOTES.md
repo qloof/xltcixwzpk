@@ -68,7 +68,23 @@ restyle from scratch on future changes.
                 stop touching lat/lon — the human's manual pin is trusted.
                 A "↺ reset to auto" button appears once this is true, to
                 flip it back and re-geocode immediately (see Feature notes).
-    plan, lodging, alt   free text
+    planItems/{pushKey}/  { text, order } — one row per stop/timeslot,
+                same shape/pattern as checklists items below, with manual
+                reorder (adapted from itinerary's own date-group reorder
+                above) since stops are inherently chronological. Replaced
+                a flat `plan` free-text string, which collapsed multi-stop
+                days into one unreadable run-on paragraph (no line-break
+                rendering) — see Feature notes.
+                Backward compat: a day may still carry the old flat `plan`
+                string if it hasn't been touched since this change. Render
+                logic shows planItems when present; otherwise falls back
+                to a single still-editable row bound to the old `plan`
+                path. The first "+ Add stop" click on such a day lazily
+                migrates that string into planItems (one row, order 0)
+                and clears `plan` — same lazy-repair spirit as `order`
+                above, not a batch migration script (none exists in this
+                repo — see History).
+    lodging, alt   free text
   checklists/{w4|w2|packingLongfen|packingGwen|dayBefore|onRoad}/{pushKey}/
     text, checked
   budget/{lodging|transport|food|activities|misc}/
@@ -666,6 +682,32 @@ since that card was already built as an HTML template string inside
   dropoff are plain text with no geocoding infrastructure at all — adding
   a Maps link there would mean building that from scratch first, not
   reusing anything that exists.
+- **Itinerary Plan → per-stop list (added History #26).** The itinerary
+  card's `plan` field was a single flat contenteditable string; on a real
+  multi-stop day (Kyushu Dec 18: land → rental car → hotel drop → lunch →
+  park → check-in → dinner → parking note) it rendered as one dense
+  run-on paragraph, since default `white-space` collapses line breaks and
+  `commitOnEnter()` was already making Enter blur/commit the field rather
+  than insert a newline. A cheap `white-space: pre-wrap` fix was
+  considered and rejected in favor of a real structured list, since more
+  days at this same level of detail were about to be written. New shape:
+  `itinerary/{pushKey}/planItems/{pushKey} = { text, order }` — modeled
+  directly on `renderChecklists()`'s row-building (add/remove via push-key,
+  `commitOnBlur` per row), plus manual ▲/▼ reorder adapted from
+  itinerary's own `reorderWithinDateGroup()` (stops are inherently
+  chronological, unlike checklist items). New `renderPlanItems()` +
+  `reorderPlanItem()` in `app.js`, called per-card from `renderItinerary()`;
+  the "+ Add stop" button reuses the existing `.add-row` class. CSS reuses
+  `.check-item`'s row styling as `.plan-item`, injected via `injectStyles()`
+  (see "Why the engine used to be duplicated per trip" above) rather than
+  hand-edited into all three trip HTML files. Old flat-string `plan` data
+  isn't wiped or batch-migrated (this repo has no migration-script
+  infrastructure — see History; `kyushu-dec-2026` is real booked data, not
+  disposable draft content the way `australia-dec-2026` was in History
+  #6) — a day with no `planItems` yet still renders its old `plan` string
+  as a single editable fallback row, and the first "+ Add stop" click on
+  that day migrates it into `planItems` (one row, order 0) before adding
+  the new blank one.
 
 ## Known limitations (already communicated to the user — don't "fix" silently)
 
@@ -1081,8 +1123,42 @@ since that card was already built as an HTML template string inside
     Verification: `node --check` passed; manually reviewed the rendered
     template strings for both new elements. **Not verified in an actual
     browser this round** — same standing caveat as History #24.
-
-## Trips so far
+26. User shared a screenshot of the live Kyushu Dec 18 card and asked, from
+    a UX standpoint, why the Plan field was unreadable — root cause found
+    in `app.js`: `plan` is a flat string rendered into a `<span>` with
+    default `white-space`, so line breaks collapse into one run-on
+    paragraph. Presented two options (cheap CSS line-break fix vs. a real
+    structured per-stop list); user chose the full restructure. See
+    Feature notes "Itinerary Plan → per-stop list" for the design and code
+    changes (`renderPlanItems()`/`reorderPlanItem()` in `app.js`, new
+    `planItems/{pushKey}` shape, CSS added via `injectStyles()`, legacy
+    flat-string fallback + lazy migration on first "+ Add stop" click).
+    Also updated `GENERIC_SEED`/`addDay`'s default itinerary-day object and
+    `scripts/new-trip.example.json` to drop the now-unused `plan: ''`
+    placeholder, so new trips/days start clean on the new shape.
+    **Backfill**: a read-only REST GET of `kyushu-dec-2026/itinerary` before
+    shipping surfaced that the flat-string problem wasn't Day-1-only as
+    first assumed — all 16 live itinerary entries (every day Dec 17–29,
+    plus Day 1's 3 already-split-out stops from History #24) still held
+    `plan` as one paragraph. Asked the user how far to backfill; chose "all
+    of it." Wrote a one-off script
+    (`scratchpad/backfill-planitems.mjs`, not checked into this repo —
+    single-use, not reusable tooling) that, per entry, POSTs each
+    hand-split stop line to `itinerary/{key}/planItems.json` (letting
+    Firebase mint real push keys, same as the app's own `push()` calls)
+    then PATCHes `plan: null` to remove the old field, over the same
+    public REST endpoint History #24 used directly. Days with only one
+    real idea (e.g. "Nagasaki full day") were left as a single planItems
+    row rather than force-split. Verified after with a second REST GET
+    confirming zero entries still carry a `plan` string and every
+    `planItems` count matches what was sent.
+    Verification this round: `node --check` passed; local static server
+    (`python -m http.server`) confirmed both `index.html` and `app.js`
+    serve correctly; Firebase REST round-trip verified by re-reading the
+    data post-write (above). **Not verified by actually loading the page
+    in a browser this round** — Claude in Chrome wasn't available in this
+    session (user declined the extension) — same standing caveat as
+    History #24/#25, worth a manual look next time the dashboard is open.
 
 - `australia-dec-2026/` — draft, not booked/verified (see History #4).
   Per the Kyushu itinerary doc (2026-08-22), this trip is now dropped —

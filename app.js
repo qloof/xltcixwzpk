@@ -35,7 +35,7 @@ const FIXED_CURRENCIES = ['SGD', 'AUD', 'USD', 'EUR', 'GBP', 'JPY', 'MYR', 'THB'
 const GENERIC_SEED = {
   meta: { title: '[Trip Name]', subtitle: '[Destination(s)] · [Start date] – [End date]', days: '—' },
   itineraryDays: [
-    { date: '', location: '[town / stop name]', lat: '', lon: '', plan: '[main activity, booking ref if any]', lodging: '[hotel / campsite, confirmation #]', alt: '' },
+    { date: '', location: '[town / stop name]', lat: '', lon: '', lodging: '[hotel / campsite, confirmation #]', alt: '' },
   ],
   checklists: {
     w4: ['[e.g. confirm time off work]', '[e.g. book primary lodging]'],
@@ -75,6 +75,13 @@ function injectStyles() {
       transition: opacity 0.3s ease, transform 0.3s ease; z-index: 999; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
     .update-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
     @media print { .update-toast { display: none !important; } }
+    .plan-items { display: flex; flex-direction: column; }
+    .plan-item { display: flex; align-items: flex-start; gap: 8px; padding: 8px 0; border-bottom: 1px dotted var(--line); }
+    .plan-item:last-child { border-bottom: none; }
+    .plan-item .move-btns { margin-left: 0; margin-top: 1px; flex-shrink: 0; }
+    .plan-item span { font-size: 14.5px; outline: none; flex: 1; }
+    .plan-item .remove-row { flex-shrink: 0; margin-top: 1px; }
+    .plan-item.plan-item-legacy span { font-style: italic; }
   `;
   document.head.appendChild(style);
 }
@@ -581,6 +588,61 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
       [orders[posInGroup], orders[targetPos]] = [orders[targetPos], orders[posInGroup]];
       group.forEach(([k], i) => writeValue(`trips/${tripId}/itinerary/${k}/order`, orders[i]));
     }
+    // Renders one day's Plan sub-entries as a list of rows (one per stop),
+    // modeled on renderChecklists' row-building further down this file —
+    // see DEV_NOTES "Data model" for why `plan` moved from a flat string to
+    // planItems/{pushKey}. Falls back to showing a still-editable single
+    // row for a day that hasn't been migrated off the old flat `plan`
+    // string yet, so nothing pre-existing is ever hidden.
+    function renderPlanItems(container, key, day) {
+      container.innerHTML = '';
+      const itemEntries = Object.entries(day.planItems || {}).sort(([ka, a], [kb, b]) => {
+        const oa = a.order ?? 0, ob = b.order ?? 0;
+        if (oa !== ob) return oa < ob ? -1 : 1;
+        return ka < kb ? -1 : 1;
+      });
+      function reorderPlanItem(itemKey, direction) {
+        const idx = itemEntries.findIndex(([k]) => k === itemKey);
+        if (idx === -1) return;
+        const targetIdx = idx + direction;
+        if (targetIdx < 0 || targetIdx >= itemEntries.length) return;
+        const orders = itemEntries.map((_, i) => i * 10);
+        [orders[idx], orders[targetIdx]] = [orders[targetIdx], orders[idx]];
+        itemEntries.forEach(([k], i) => writeValue(`trips/${tripId}/itinerary/${key}/planItems/${k}/order`, orders[i]));
+      }
+      if (!itemEntries.length && day.plan) {
+        const row = document.createElement('div');
+        row.className = 'plan-item plan-item-legacy';
+        row.innerHTML = `<span contenteditable="true"></span>`;
+        const span = row.querySelector('span');
+        span.textContent = day.plan;
+        commitOnBlur(span, `trips/${tripId}/itinerary/${key}/plan`);
+        container.appendChild(row);
+        return;
+      }
+      itemEntries.forEach(([itemKey, item], idx) => {
+        const row = document.createElement('div');
+        row.className = 'plan-item';
+        row.innerHTML = `
+          <span class="move-btns">
+            <button class="move-btn" type="button" data-move-up title="Move up">▲</button>
+            <button class="move-btn" type="button" data-move-down title="Move down">▼</button>
+          </span>
+          <span contenteditable="true"></span>
+          <button class="remove-row" data-remove>✕</button>`;
+        const span = row.querySelector('span[contenteditable]');
+        span.textContent = item.text ?? '';
+        commitOnBlur(span, `trips/${tripId}/itinerary/${key}/planItems/${itemKey}/text`);
+        row.querySelector('[data-remove]').onclick = () => dbSet(`trips/${tripId}/itinerary/${key}/planItems/${itemKey}`, null);
+        const upBtn = row.querySelector('[data-move-up]');
+        const downBtn = row.querySelector('[data-move-down]');
+        upBtn.disabled = idx === 0;
+        downBtn.disabled = idx === itemEntries.length - 1;
+        upBtn.onclick = () => reorderPlanItem(itemKey, -1);
+        downBtn.onclick = () => reorderPlanItem(itemKey, +1);
+        container.appendChild(row);
+      });
+    }
     entries.forEach(([key, day], i) => {
       const isToday = day.date && day.date === today;
       const card = document.createElement('div');
@@ -614,7 +676,10 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
           <input type="number" step="any" placeholder="lat" data-f="lat">
           <input type="number" step="any" placeholder="lon" data-f="lon">
         </div>
-        <div class="field"><span class="field-label">Plan</span><span contenteditable="true" data-f="plan"></span></div>
+        <div class="field"><span class="field-label">Plan</span>
+          <div class="plan-items" data-plan-items></div>
+          <button class="add-row" type="button" data-add-plan-item>+ Add stop</button>
+        </div>
         <div class="field"><span class="field-label">Lodging</span><span contenteditable="true" data-f="lodging"></span></div>
         <div class="field"><span class="field-label">Alternate (weather / closure)</span><span contenteditable="true" data-f="alt"></span></div>
         <div class="weather-line" data-weather></div>
@@ -693,6 +758,25 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
         el.textContent = day[el.dataset.f] ?? '';
         commitOnBlur(el, `trips/${tripId}/itinerary/${key}/${el.dataset.f}`);
       });
+
+      renderPlanItems(card.querySelector('[data-plan-items]'), key, day);
+      // First click on a day still holding the old flat `plan` string
+      // migrates it into a single planItems row (order 0) before adding the
+      // new one, instead of leaving it to turn into one giant unsplit blob —
+      // see DEV_NOTES "Data model" for the lazy-migration rationale.
+      card.querySelector('[data-add-plan-item]').onclick = () => {
+        let itemEntries = Object.entries(day.planItems || {});
+        if (!itemEntries.length && day.plan) {
+          const migratedKey = push(child(tripRef, `itinerary/${key}/planItems`)).key;
+          writeValue(`trips/${tripId}/itinerary/${key}/planItems/${migratedKey}`, { text: day.plan, order: 0 });
+          writeValue(`trips/${tripId}/itinerary/${key}/plan`, '');
+          itemEntries = [[migratedKey, { text: day.plan, order: 0 }]];
+        }
+        const maxOrder = itemEntries.reduce((m, [, it]) => Math.max(m, it.order ?? 0), -10);
+        const newKey = push(child(tripRef, `itinerary/${key}/planItems`)).key;
+        writeValue(`trips/${tripId}/itinerary/${key}/planItems/${newKey}`, { text: '[stop]', order: maxOrder + 10 });
+      };
+
       card.querySelectorAll('input[type="number"][data-f]').forEach(el => {
         el.value = day[el.dataset.f] ?? '';
         el.addEventListener('blur', () => {
@@ -754,7 +838,7 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
   }
   document.getElementById('addDay').onclick = () => {
     const key = push(child(tripRef, 'itinerary')).key;
-    writeValue(`trips/${tripId}/itinerary/${key}`, { date: '', location: '', lat: '', lon: '', plan: '', lodging: '', alt: '', coordsManual: false, order: 0 });
+    writeValue(`trips/${tripId}/itinerary/${key}`, { date: '', location: '', lat: '', lon: '', lodging: '', alt: '', coordsManual: false, order: 0 });
   };
 
   // ---- map ----
