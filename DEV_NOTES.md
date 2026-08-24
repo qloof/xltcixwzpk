@@ -375,7 +375,8 @@ since that card was already built as an HTML template string inside
   hidden by default behind a "± coordinates" toggle so the itinerary card
   stays readable. Typing a location and clicking away (blur) calls
   `geocodeLocation()` and fills lat/lon automatically, which also fills a
-  "Navigate in Waze →" link (`https://waze.com/ul?ll={lat},{lon}&navigate=yes`).
+  "View in Waze →" link (`https://waze.com/ul?ll={lat},{lon}&navigate=no` —
+  see History #29 for why this is `navigate=no`, not `=yes`).
   If the lookup finds nothing, a small amber line under the location field
   says so and points at the manual toggle instead of failing silently.
   **This re-geocodes on every location edit**, not just the first — earlier
@@ -734,10 +735,11 @@ since that card was already built as an HTML template string inside
   landmark (Kirishima Jingū Station) with `coordsManual: true` and a note
   on the card flagging it as approximate.
   **Google Maps link (added History #25).** A second nav-app link next to
-  Waze on both Itinerary and Accommodations cards, `"Navigate in Google
-  Maps →"`, using Google's documented stable URL scheme
-  (`https://www.google.com/maps/dir/?api=1&destination={lat},{lon}`) —
-  opens the native app on mobile if installed, falls back to the web app
+  Waze on both Itinerary and Accommodations cards, `"View in Google
+  Maps →"`, using Google's documented "show this place" URL scheme
+  (`https://www.google.com/maps/search/?api=1&query={lat},{lon}` — see
+  History #29 for why this is the `search` endpoint, not `dir`) — opens
+  the native app on mobile if installed, falls back to the web app
   otherwise. No new data fields: it's derived from the same `lat`/`lon`
   already tracked for Waze, so the per-card `updateWazeLink()` closure in
   both `renderItinerary()` and `renderAccommodations()` was renamed to
@@ -1257,6 +1259,22 @@ since that card was already built as an HTML template string inside
     `node --check` passed. **Not yet verified in an actual browser** — do
     that before considering this fully closed, per the pattern in History
     #26/#27 where a browser-only bug was missed by code review alone.
+29. User asked to replace the Waze/Google Maps buttons' "navigate
+    immediately" behavior with "just show me the pin" — sometimes they
+    want to glance at where a place is, not launch turn-by-turn on the
+    spot, and figured they could tap "navigate" themselves once the app
+    is open. Both services already have a documented URL for exactly
+    this, so no new logic was needed: Waze's `navigate=yes` param became
+    `navigate=no` (opens centered on the pin instead of auto-starting
+    navigation); Google Maps switched from the directions endpoint
+    (`/maps/dir/?api=1&destination=`) to the documented "show this place"
+    search endpoint (`/maps/search/?api=1&query=`). Both link labels
+    renamed from "Navigate in X →" to "View in X →" to match, since the
+    old label would now be actively misleading — this matters more than
+    usual given Gwen (the less tech-savvy co-traveler) relies on the
+    label text, not just the behavior. Applied in both places these links
+    exist: `renderItinerary()` and `renderAccommodations()`. Verification:
+    `node --check` passed. Not yet verified in an actual browser.
 
 - `australia-dec-2026/` — draft, not booked/verified (see History #4).
   Per the Kyushu itinerary doc (2026-08-22), this trip is now dropped —

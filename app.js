@@ -668,8 +668,8 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
         <div class="card-links">
           <button class="coords-toggle" type="button" data-toggle-coords>± coordinates</button>
           <button class="coords-toggle" type="button" data-reset-coords style="display:none;">↺ reset to auto</button>
-          <a class="nav-link" data-waze target="_blank" rel="noopener" style="display:none;">Navigate in Waze →</a>
-          <a class="nav-link" data-gmaps target="_blank" rel="noopener" style="display:none;">Navigate in Google Maps →</a>
+          <a class="nav-link" data-waze target="_blank" rel="noopener" style="display:none;">View in Waze →</a>
+          <a class="nav-link" data-gmaps target="_blank" rel="noopener" style="display:none;">View in Google Maps →</a>
         </div>
         <div class="coords-row hidden">
           <span class="field-label" style="align-self:center;margin:0;">Coords</span>
@@ -703,9 +703,9 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
       function updateNavLinks() {
         const lat = latInput.value, lon = lonInput.value;
         if (lat && lon) {
-          wazeLink.href = `https://waze.com/ul?ll=${lat},${lon}&navigate=yes`;
+          wazeLink.href = `https://waze.com/ul?ll=${lat},${lon}&navigate=no`;
           wazeLink.style.display = '';
-          gmapsLink.href = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
+          gmapsLink.href = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
           gmapsLink.style.display = '';
         } else {
           wazeLink.style.display = 'none';
@@ -1105,8 +1105,8 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
         <div class="card-links">
           <button class="coords-toggle" type="button" data-toggle-coords>± coordinates</button>
           <button class="coords-toggle" type="button" data-reset-coords style="display:none;">↺ reset to auto</button>
-          <a class="nav-link" data-waze target="_blank" rel="noopener" style="display:none;">Navigate in Waze →</a>
-          <a class="nav-link" data-gmaps target="_blank" rel="noopener" style="display:none;">Navigate in Google Maps →</a>
+          <a class="nav-link" data-waze target="_blank" rel="noopener" style="display:none;">View in Waze →</a>
+          <a class="nav-link" data-gmaps target="_blank" rel="noopener" style="display:none;">View in Google Maps →</a>
         </div>
         <div class="coords-row hidden">
           <span class="field-label" style="align-self:center;margin:0;">Coords</span>
@@ -1164,9 +1164,9 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
       function updateNavLinks() {
         const lat = latInput.value, lon = lonInput.value;
         if (lat && lon) {
-          wazeLink.href = `https://waze.com/ul?ll=${lat},${lon}&navigate=yes`;
+          wazeLink.href = `https://waze.com/ul?ll=${lat},${lon}&navigate=no`;
           wazeLink.style.display = '';
-          gmapsLink.href = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
+          gmapsLink.href = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
           gmapsLink.style.display = '';
         } else {
           wazeLink.style.display = 'none';
