@@ -79,7 +79,7 @@ function injectStyles() {
     .plan-item { display: flex; align-items: flex-start; gap: 8px; padding: 8px 0; border-bottom: 1px dotted var(--line); }
     .plan-item:last-child { border-bottom: none; }
     .plan-item .move-btns { margin-left: 0; margin-top: 1px; flex-shrink: 0; }
-    .plan-item span { font-size: 14.5px; outline: none; flex: 1; }
+    .plan-item span[contenteditable] { font-size: 14.5px; outline: none; flex: 1; }
     .plan-item .remove-row { flex-shrink: 0; margin-top: 1px; }
     .plan-item.plan-item-legacy span { font-style: italic; }
   `;

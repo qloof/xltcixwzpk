@@ -1159,6 +1159,20 @@ since that card was already built as an HTML template string inside
     in a browser this round** — Claude in Chrome wasn't available in this
     session (user declined the extension) — same standing caveat as
     History #24/#25, worth a manual look next time the dashboard is open.
+27. Exactly the gap History #26 flagged: user opened the live page and
+    screenshotted a real layout bug the code-review-only verification
+    missed. Each `.plan-item` row has two `<span>` elements — the
+    `.move-btns` wrapper around the ▲/▼ buttons, and the actual text —
+    but the CSS rule meant to give the text `flex: 1` was `.plan-item
+    span` (no qualifier), so it matched *both* spans. `.move-btns` picked
+    up `flex: 1` too and stretched to fill the row, shoving the real text
+    far to the right with a large empty gap in between. Fixed by scoping
+    the rule to `.plan-item span[contenteditable]` — matches only the
+    text span, since `.move-btns` has no `contenteditable` attribute.
+    One-line CSS fix in `injectStyles()`; no data/markup change needed.
+    Verification: `node --check` passed. Still not loaded in an actual
+    browser by Claude this round — the user's own screenshot is what
+    caught this, and remains the only real verification so far.
 
 - `australia-dec-2026/` — draft, not booked/verified (see History #4).
   Per the Kyushu itinerary doc (2026-08-22), this trip is now dropped —
