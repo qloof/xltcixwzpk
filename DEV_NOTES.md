@@ -166,6 +166,10 @@ restyle from scratch on future changes.
                 the dropdown in the Budget panel (which writes it back
                 immediately).
   contacts/{pushKey}/  { name, ref }
+  phrases/{pushKey}/   { situation, phrase, romaji, notes }
+                Local-language phrases for the Language tab — see "Language
+                tab" in Feature notes. Same creation-order-sort, card-grid
+                pattern as contacts, just with 4 fields instead of 2.
   extras/{pushKey}/    { item, notes }
   flights/{pushKey}/
     date, flightNo, route, depart, arrive, confirmation, notes
@@ -775,6 +779,34 @@ since that card was already built as an HTML template string inside
   as a single editable fallback row, and the first "+ Add stop" click on
   that day migrates it into `planItems` (one row, order 0) before adding
   the new blank one.
+- **Language tab (added History #30).** A new top-level tab, "Language" —
+  one card per phrase (Situation / Phrase / Romaji / Notes), same
+  card-grid pattern and `contact-card` CSS class as Contacts (creation-
+  order sort, `commitOnBlur` per field, "+ Add phrase" pushes a blank
+  row) rather than inventing new UI for it. New `phrases/{pushKey}` node
+  (see Data model), `renderPhrases()` in `app.js`, called from
+  `renderAll()` right after `renderContacts()`. Considered nesting inside
+  Extras (same reasoning already used to reject new top-level tabs for
+  per-person packing lists and the Bookings subsections — the tab bar
+  keeps growing) but the user explicitly asked for a dedicated tab, and
+  phrases are a genuinely different content type (something you'd
+  actually scan mid-conversation with a shopkeeper, not a checklist) —
+  so this one earned the extra tab despite the general bias against
+  adding more. Tab bar is now 9 wide; still fine since `.tabs` already
+  scrolls horizontally (`overflow-x: auto`), just more of a swipe on
+  phone. Since this is a shared-engine change, the tab button + panel
+  markup was added to all three per-trip HTML files that import this
+  version of `app.js` (`template/`, `kyushu-dec-2026/`,
+  `australia-dec-2026/`), not just the trip that asked for it — an
+  unguarded `document.getElementById('addPhrase').onclick = ...` in
+  `app.js` would otherwise throw on any trip file missing that button,
+  same risk already noted for `addContact` etc. A matching Help tab entry
+  was added to all three as well, same convention as every other tab.
+  `kyushu-dec-2026` also got 10 real starter phrases (ordering, thanks,
+  excuse-me, English-menu, no-pork, alcohol-check, bill, bathroom,
+  cheers, compliment) written directly via Firebase REST, not just left
+  as an empty tab — same "real starter items, not placeholders" precedent
+  as History #11's packing lists.
 
 ## Known limitations (already communicated to the user — don't "fix" silently)
 
@@ -1279,91 +1311,91 @@ since that card was already built as an HTML template string inside
 - `australia-dec-2026/` — draft, not booked/verified (see History #4).
   Per the Kyushu itinerary doc (2026-08-22), this trip is now dropped —
   leave it alone unless the user asks to clean it up.
-- `kyushu-dec-2026/` — real, booked trip (flights + both ryokans + the
-  Dec 18–19 Fukuoka hotel confirmed; rental car and the Dec 28 hotel
-  pending — see Still open). Scaffolded History #23; Dec 18 fully
-  worked out History #24.
+- `kyushu-dec-2026/` — real, booked trip, **itinerary fully built end to
+  end, Day 1 through Dec 29** (every day broken into multi-card entries,
+  see the multi-card standing rule above and the trip's own
+  `kyushu-dec-2026-itinerary.md` for full day-by-day detail and
+  reasoning — that doc's own top status block is kept reconciled, check
+  it first for current state rather than this entry). All hotels + flights
+  booked; only the Hi-Hi Car Rental studless-tire booking and IDP remain
+  genuinely open, plus a few "recheck closer to December" live-conditions
+  flags (volcanic alerts, earthquake aftermath) — see that doc's "Known
+  gaps" section. Scaffolded History #23; Dec 18 fully worked out History
+  #24; nav-button fix History #28; Waze/Maps view-not-navigate change
+  History #29.
 - `singapore-aug-2026/` — deleted (see History #19). Was a deliberate live
   test trip (History #9), not a real planned trip; served its purpose
   across rounds 10-18 and was removed once no longer needed — repo files,
   `trips.json` entry, and the live Firebase data under
   `/trips/singapore-aug-2026` were all deleted. If this slug is ever
   reused, note the Firebase data starts fresh (nothing to migrate).
+30. User asked to fill out `kyushu-dec-2026`'s Contacts tab with phone
+    numbers pulled from the actual Agoda/Trip.com booking PDFs (Ryokan
+    Sanga, Ryokojin Sanso, Noyado Nagasaki, Sotetsu Grand Fresa Kumamoto,
+    Solest Takachiho, JR Kyushu Hotel Kagoshima, Hotel Reference Tenjin
+    III) plus web-searched numbers for Thai Airways, JAF, Hi-Hi Car
+    Rental, and the Ocean Arrow ferry — 12 contacts total, written via
+    Firebase REST since the browser extension wasn't connected this
+    session. First attempt at the 7 new contacts garbled UTF-8
+    (em-dashes/middle-dots became `�`) because they were passed as
+    inline `curl -d` command-line arguments rather than through a file —
+    caught on verification and fixed by rewriting via `--data-binary
+    @file.json` instead, same as the working first batch. **Lesson: on
+    this Windows/Git-Bash setup, always write non-ASCII JSON payloads to
+    a file and pass them with `--data-binary @file`, never inline as a
+    `-d` argument — inline argv text does not survive as UTF-8 here.**
+    Also caught and fixed a real data bug found by the user: the Dec 18
+    itinerary card ("Fukuoka Airport → Hotel Monte Hermana Fukuoka") had
+    lat/lon sitting essentially on top of the airport (33.586802,
+    130.4473939) rather than the hotel — almost certainly because the
+    location text names two places and whatever geocoded it keyed off
+    "Fukuoka Airport" (the first/most exact match) rather than the
+    hotel, which is the card's actual destination and the only one of
+    the two a nav link is useful for (you don't need Waze to find the
+    airport while standing in it). Re-pinned to the hotel's real
+    coordinates (33.5858269, 130.404844 — matching the Bookings tab's
+    own Monte Hermana card) and set `coordsManual: true` so a future
+    location-text edit won't silently re-geocode it back to the airport.
+    General takeaway, not just this one card: a card whose location text
+    describes a journey between two places (not one destination) is the
+    pattern most likely to have a wrong pin — worth spot-checking those
+    specifically rather than assuming every geocoded coordinate is
+    trustworthy. Then added the Language tab (see Feature notes) at the
+    user's request, explicitly for future trips too, not just Kyushu.
 
 ## Still open / natural next steps
 
+**Scope note (cleaned up 2026-08-25):** this section had drifted into
+tracking trip *content* status (which hotels were booked, which
+passenger names needed checking, which itinerary days had gaps) — not
+just app-engineering debt. That's the wrong home for it: it duplicated,
+and eventually contradicted, `kyushu-dec-2026-itinerary.md`, which
+already exists specifically to be *the* reconciled, current status doc
+for that trip. Trip-content status belongs there (or in a future trip's
+own equivalent doc), not here — DEV_NOTES.md is for a fresh session
+working on the shared app/engine, per the opening line of this file.
+Keep this section scoped to real engineering/testing debt only.
+
 - **Remaining live-browser verification** (see History #22 — most of this
-  item is now done, this is what's left): the offline write queue
-  actually queuing a write while devtools is set to offline and sending
-  it once back online (hardest to fake headlessly, still untested); the
-  coords "reset to auto" button (no itinerary day currently has
-  `coordsManual: true` to exercise it against); the Budget currency
-  dropdown's "Other…" free-text option specifically (AUD, a fixed-list
-  value, was confirmed working, but the free-text fallback path wasn't
-  opened); and actually editing the Australia trip's itinerary dates to
-  confirm the landing page's Current/Past grouping re-buckets without a
-  `trips.json` edit (History #21's fix was verified via a real network
-  request succeeding, not by triggering an actual re-bucket).
-- Real verification pass before the Australia trip is actually real:
-  confirm opening hours/closures for each stop via web search close to the
-  trip date (per the standing project instruction), fill in actual
-  hotel/car-rental bookings and confirmation numbers, replace all `[TBD]`
-  placeholders.
+  is now done, this is what's left): the offline write queue actually
+  queuing a write while devtools is set to offline and sending it once
+  back online (hardest to fake headlessly, still untested); the coords
+  "reset to auto" button (no itinerary day currently has
+  `coordsManual: true` to exercise it against — though `kyushu-dec-2026`
+  now has several, see History #30, so this may be testable now); the
+  Budget currency dropdown's "Other…" free-text option specifically (AUD,
+  a fixed-list value, was confirmed working, but the free-text fallback
+  path wasn't opened); actually editing the Australia trip's itinerary
+  dates to confirm the landing page's Current/Past grouping re-buckets
+  without a `trips.json` edit (History #21's fix was verified via a real
+  network request succeeding, not by triggering an actual re-bucket); and
+  `kyushu-dec-2026/` as a whole, which — including the Bookings tab, the
+  `pdfUrl`/`pdfUrl2` links, same-date multi-stop card ordering, and the
+  new Language tab (History #30) — has only ever been checked via
+  `node --check`, DOM-id cross-reference, and direct Firebase REST reads,
+  never opened in a real browser/phone.
 - No UI yet to un-share / revoke a share link — the QR/share panel just
   surfaces the existing (unauthed) URL, it doesn't add any new access
   control. Consistent with the existing "anyone with the link" trust
   model (see Known limitations), just making the link easier to hand
   someone.
-- Australia itinerary has a real content gap: dated stops exist for
-  Dec 8–13, then nothing at all until a single Dec 21 departure entry —
-  Dec 14–20 (7 days) has no itinerary data. Needs either real stops added
-  or the trip's actual plan for that stretch confirmed with the user.
-- The Australia week-4 checklist includes "Apply for Australia ETA /
-  eVisitor visa" — written as a plausible starter item, not verified
-  against current Australian visa requirements for a Singapore passport.
-  Confirm the correct visa product via a real search before the user
-  relies on it (visa rules/names do change).
-- **Kyushu rental car — not yet booked.** Hi-Hi Car Rental's reply is still
-  pending as of scaffolding (History #23); the Bookings tab's Car Rental
-  card is seeded with `[TBD]` in the company field. Update it once
-  confirmed — either by hand in the app (Bookings tab) or by re-running
-  the relevant Firebase write.
-- Kyushu itinerary lat/lon are approximate city-center coordinates for
-  every day **except Dec 18**, which now has 4 real geocoded stops (see
-  History #24) — not geocoded against actual hotel/ryokan addresses for
-  the rest. Opening hours/closures and the IDP application are also still
-  open (see the seeded Checklists tab).
-- **Kyushu — Ryokojin Sanso's Waze pin is a stand-in, not the real address.**
-  Nominatim has no OSM entry for the property itself, so its Accommodations
-  card is pinned to the nearest resolvable landmark (Kirishima Jingū
-  Station) with `coordsManual: true` and a note flagging it as approximate
-  (see "Waze link on Accommodations" in Feature notes). Replace with the
-  real address via the card's "± coordinates" toggle once available.
-- **Kyushu — most `[TBD]` hotel nights still have no lat/lon.** Nagasaki
-  (×2), Kumamoto, Takachiho, and Kagoshima itinerary days all have a real
-  location name but no coordinates yet, since no specific hotel is booked
-  — weather/map/drive-time for those days stay blank until a real stop
-  (with coordinates) replaces the city-level placeholder. **Dec 18
-  (Fukuoka) is now resolved** — see History #24. **Dec 28 is also still
-  open**: the plan moved from a Fukuoka-city last night to Dazaifu/
-  Chikushino (Futsukaichi Onsen) per the planning doc
-  (`kyushu-dec-2026-itinerary.md`), but no specific accommodation has been
-  chosen there yet, and the live dashboard's Dec 28 itinerary day still
-  says the old "Fukuoka hotel [TBD], last yatai dinner" plan — that day's
-  card needs updating to match the planning doc once a Futsukaichi
-  property is picked.
-- **Kyushu — not yet verified in an actual browser at all.** History #22's
-  real-browser pass covered `australia-dec-2026/` and the landing page
-  only; `kyushu-dec-2026/` (including the Bookings tab, the PDF links —
-  now two per flight card, see History #24 — and the Ryokojin Sanso Waze
-  pin) has only been checked via `node --check`, DOM-id cross-reference,
-  and direct Firebase REST reads — never opened in a real browser/phone.
-  Do that before trusting the sync/UI behavior fully, especially the new
-  `pdfUrl2` co-traveler link and the 4-stops-on-one-date Dec 18 card
-  (first real use of same-date multi-stop ordering with actual content).
-- Passenger names on both Thai Airways e-tickets (QUEK LONG FEN MR / LEE WEI
-  YI GWENDOLYN MISS) still need checking against passports exactly — flagged
-  in the flight records' notes and the w2 checklist, not yet confirmed. Both
-  e-tickets were read in full this session (History #24) and the names
-  match what's already recorded in the dashboard, but that's not the same
-  as checking them against the actual passports.

@@ -212,6 +212,7 @@
     <button class="tab" data-panel="checklists">Checklists</button>
     <button class="tab" data-panel="budget">Budget</button>
     <button class="tab" data-panel="contacts">Contacts</button>
+    <button class="tab" data-panel="phrases">Language</button>
     <button class="tab" data-panel="extras">Extras</button>
     <button class="tab" data-panel="bookings">Bookings</button>
     <button class="tab" data-panel="help">Help</button>
@@ -303,6 +304,15 @@
       <p class="section-hint">One card per party you might need to reach or reference on the road.</p>
       <div class="contact-grid" id="contactGrid"></div>
       <button class="add-row" id="addContact">+ Add contact</button>
+    </section>
+  </div>
+
+  <div class="panel" id="phrases">
+    <section>
+      <h2>Language</h2>
+      <p class="section-hint">Common phrases for the road — one card per situation. Add as many as you need.</p>
+      <div class="contact-grid" id="phraseGrid"></div>
+      <button class="add-row" id="addPhrase">+ Add phrase</button>
     </section>
   </div>
 
@@ -423,6 +433,10 @@
       <div class="help-item">
         <p class="help-title">Extras</p>
         <p>A catch-all for anything that doesn't fit elsewhere — pet-sitter instructions, medication reminders, whatever's specific to this trip.</p>
+      </div>
+      <div class="help-item">
+        <p class="help-title">Language</p>
+        <p>Common phrases in the local language, one card per situation — what to say, how it's pronounced, and any breakdown or tips. Handy for ordering food, asking about allergens, or getting around. Tap "+ Add phrase" for a blank card.</p>
       </div>
 
       <div class="help-group-title">Bookings tab</div>
@@ -628,19 +642,113 @@
       "contacts": [
         {
           "name": "Ryokan Sanga (Kurokawa, Dec 23–25)",
-          "ref": "Booking ID 2043279062 · sanga-ryokan.com/en"
+          "ref": "Booking ID 2043279062 · +81 967 44 0906 · sanga-ryokan.com/en"
         },
         {
           "name": "Ryokojin Sanso (Kirishima, Dec 25–27)",
-          "ref": "Booking ID 2043290435 · Agoda ref 8UAGUQ9C"
+          "ref": "Booking ID 2043290435 · Agoda ref 8UAGUQ9C · +81 995 78 2831 · ryokojin.com"
         },
         {
           "name": "Hi-Hi Car Rental (Fukuoka Airport)",
-          "ref": "CAR STYLE JAPAN Co., Ltd. — contacted via LINE 22 Aug 2026, awaiting reply re: studless tires"
+          "ref": "CAR STYLE JAPAN Co., Ltd. — LINE (contacted 22 Aug 2026, awaiting reply re: studless tires) · phone +81 92 409 2276"
         },
         {
           "name": "JAF (Japan Automobile Federation)",
-          "ref": "Emergency roadside assistance — fallback if no studless-tire rental found"
+          "ref": "Emergency roadside assistance — fallback if no studless-tire rental found · Road Service Call 0570-00-8139 (or #8139 from mobile)"
+        },
+        {
+          "name": "Hotel Monte Hermana Fukuoka (Dec 18–19)",
+          "ref": "Booking ID 2043617518 (Agoda) · +81 92 735 7111"
+        },
+        {
+          "name": "Noyado Nagasaki (Dec 19–21)",
+          "ref": "Trip.com confirmation RYa0n91ank, PIN 6357 · Booking No. 1578949356024489 · +81-95-893-5234 · message via Trip.com app (internet only, no SIM needed)"
+        },
+        {
+          "name": "Sotetsu Grand Fresa Kumamoto (Dec 21–22)",
+          "ref": "Agoda booking ID 2043641938 · +81 96 353 0203 · message via Agoda app (internet only, no SIM needed)"
+        },
+        {
+          "name": "Solest Takachiho Hotel (Dec 22–23)",
+          "ref": "Agoda booking ID 2043647851 · +81 982 83 0001 · message via Agoda app (internet only, no SIM needed)"
+        },
+        {
+          "name": "JR Kyushu Hotel Kagoshima (Dec 27–28)",
+          "ref": "Agoda booking ID 2043660181, ref 19570901 · +81 99 213 8000 · message via Agoda app (internet only, no SIM needed)"
+        },
+        {
+          "name": "Hotel Reference Tenjin III (Dec 28–29)",
+          "ref": "Trip.com confirmation 22315092353406, PIN 4181 · Booking No. 1578949356302016 · +81-92-718-3030 · message via Trip.com app (internet only, no SIM needed)"
+        },
+        {
+          "name": "Thai Airways (flights, PNR FWTURC)",
+          "ref": "Japan contact center +81 50-1720-2692 (Japanese-language global line, replaced old 0570 number Aug 2025) · Manage My Booking at thaiairways.com — most reliable option given the 55-min Bangkok return connection"
+        },
+        {
+          "name": "Ocean Arrow Ferry (Shimabara→Kumamoto, Dec 21)",
+          "ref": "Reservation center 0957-63-8008 (8:30am–5:50pm) · kumamotoferry.co.jp"
+        }
+      ],
+      "phrases": [
+        {
+          "situation": "Order one of something on the menu",
+          "phrase": "Kore wo hitotsu kudasai.",
+          "romaji": "Koh-reh woh hee-tot-soo koo-dah-sigh",
+          "notes": "Kore = this, wo = object marker, hitotsu = one item, kudasai = please give me. Swap hitotsu for futatsu (2), mittsu (3), yottsu (4). Point at the item while saying it."
+        },
+        {
+          "situation": "Thank you",
+          "phrase": "Arigatou gozaimasu.",
+          "romaji": "Ah-ree-gah-toh goh-zai-mahs",
+          "notes": ""
+        },
+        {
+          "situation": "Excuse me / sorry (getting attention, squeezing past)",
+          "phrase": "Sumimasen.",
+          "romaji": "Soo-mee-mah-sen",
+          "notes": "The single most useful word for getting a server's attention at a yatai stall or counter."
+        },
+        {
+          "situation": "Ask for an English menu",
+          "phrase": "Eigo no menyuu wa arimasu ka?",
+          "romaji": "Ay-goh no meh-nyoo wah ah-ree-mahs kah",
+          "notes": "Most modern Watanabe-dori stalls have one — worth asking before pointing and guessing."
+        },
+        {
+          "situation": "Ask for no pork",
+          "phrase": "Buta niku nashi de onegaishimasu.",
+          "romaji": "Boo-tah nee-koo nah-shee deh oh-neh-guy-shee-mahs",
+          "notes": "Useful given how much of Kyushu food leans on tonkotsu/pork — buta niku = pork."
+        },
+        {
+          "situation": "Ask if something contains alcohol",
+          "phrase": "Kore wa osake ga haitte imasu ka?",
+          "romaji": "Koh-reh wah oh-sah-keh gah high-teh ee-mahs kah",
+          "notes": "Relevant for kappo-zake (bamboo-warmed sake) and dishes cooked with mirin/sake."
+        },
+        {
+          "situation": "Ask for the bill",
+          "phrase": "Okaikei onegaishimasu.",
+          "romaji": "Oh-kai-kay oh-neh-guy-shee-mahs",
+          "notes": ""
+        },
+        {
+          "situation": "Ask where the bathroom is",
+          "phrase": "Toire wa doko desu ka?",
+          "romaji": "Toy-reh wah doh-koh dess kah",
+          "notes": ""
+        },
+        {
+          "situation": "Cheers (drinking)",
+          "phrase": "Kanpai!",
+          "romaji": "Kahn-pie",
+          "notes": ""
+        },
+        {
+          "situation": "Compliment the food",
+          "phrase": "Oishii!",
+          "romaji": "Oy-shee",
+          "notes": "Genuinely appreciated when said to the chef/staff directly."
         }
       ],
       "budget": {

@@ -46,6 +46,7 @@ const GENERIC_SEED = {
     onRoad: ['[e.g. daily check-in with home]'],
   },
   contacts: [{ name: '[e.g. Roadside assistance]', ref: '[number]' }],
+  phrases: [{ situation: '[e.g. Order one of something]', phrase: '[phrase]', romaji: '[pronunciation]', notes: '[breakdown / tips]' }],
   budget: {
     lodging:    { label: 'Lodging',          budgeted: '', actual: '' },
     transport:  { label: 'Transport / fuel', budgeted: '', actual: '' },
@@ -362,6 +363,7 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
       checklists: { w4: {}, w2: {}, packingLongfen: {}, packingGwen: {}, dayBefore: {}, onRoad: {} },
       budget: SEED.budget,
       contacts: {},
+      phrases: {},
       extras: {},
       flights: {},
       accommodations: {},
@@ -380,6 +382,10 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
     SEED.contacts.forEach(c => {
       const key = push(child(tripRef, 'contacts')).key;
       seeded.contacts[key] = c;
+    });
+    (SEED.phrases || []).forEach(p => {
+      const key = push(child(tripRef, 'phrases')).key;
+      seeded.phrases[key] = p;
     });
     SEED.extras.forEach(x => {
       const key = push(child(tripRef, 'extras')).key;
@@ -450,6 +456,7 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
     renderChecklists(data.checklists || {});
     renderBudget(data.budget || {}, data.budgetCurrency || HOME_CURRENCY);
     renderContacts(data.contacts || {});
+    renderPhrases(data.phrases || {});
     renderExtras(data.extras || {});
     renderFlights(data.flights || {});
     renderAccommodations(data.accommodations || {});
@@ -987,6 +994,41 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
   document.getElementById('addContact').onclick = () => {
     const key = push(child(tripRef, 'contacts')).key;
     writeValue(`trips/${tripId}/contacts/${key}`, { name: '[name]', ref: '[number / ref]' });
+  };
+
+  // ---- Language tab: local-language phrases, one card per situation ----
+  // Same card-grid pattern as Contacts (creation-order sort, commitOnBlur
+  // per field, "+ Add" pushes a blank row) rather than a new UI concept —
+  // see DEV_NOTES.md "Language tab" for why this earned its own top-level
+  // tab instead of nesting inside Extras.
+  function renderPhrases(phrases) {
+    const grid = document.getElementById('phraseGrid');
+    if (focusedInside(grid)) return;
+    grid.innerHTML = '';
+    Object.entries(phrases).sort(([a], [b]) => (a < b ? -1 : 1)).forEach(([key, p]) => {
+      const card = document.createElement('div');
+      card.className = 'card contact-card';
+      card.innerHTML = `
+        <span class="field-label">Situation</span>
+        <div contenteditable="true" data-f="situation"></div>
+        <span class="field-label">Phrase</span>
+        <div contenteditable="true" data-f="phrase"></div>
+        <span class="field-label">Romaji / pronunciation</span>
+        <div contenteditable="true" data-f="romaji"></div>
+        <span class="field-label">Notes</span>
+        <div contenteditable="true" data-f="notes"></div>
+        <button class="remove-row" data-remove>− Remove</button>`;
+      card.querySelectorAll('[data-f]').forEach(el => {
+        el.textContent = p[el.dataset.f] ?? '';
+        commitOnBlur(el, `trips/${tripId}/phrases/${key}/${el.dataset.f}`);
+      });
+      card.querySelector('[data-remove]').onclick = () => dbSet(`trips/${tripId}/phrases/${key}`, null);
+      grid.appendChild(card);
+    });
+  }
+  document.getElementById('addPhrase').onclick = () => {
+    const key = push(child(tripRef, 'phrases')).key;
+    writeValue(`trips/${tripId}/phrases/${key}`, { situation: '[situation]', phrase: '[phrase]', romaji: '[pronunciation]', notes: '' });
   };
 
   function renderExtras(extras) {
