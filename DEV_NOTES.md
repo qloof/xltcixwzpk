@@ -898,8 +898,46 @@ since that card was already built as an HTML template string inside
   against real Kyushu data: `node --check` passed, then grepped the
   generated output for the travelers' names, both accommodations'
   booking IDs, the flight PNR, and "budget"/"packing" — all clean except
-  the intentional one-line banner explaining what was left out. Not yet
-  committed/pushed or opened in a real browser — see Still Open.
+  the intentional one-line banner explaining what was left out.
+- **Auto-linkify URLs in plan-item text (added 2026-08-27).** User asked
+  for a Visit Japan Web registration link to be directly clickable from
+  the Dec 18 arrival card, not just present as plain text. `linkifyText()`
+  in `app.js` (next to `commitOnBlur` — same "shared small helpers" spot
+  as `flashSaved`) escapes the stored text then wraps bare `https?://`
+  URLs in `<a target="_blank" rel="noopener">`, and `renderPlanItems()`
+  now sets `span.innerHTML` instead of `span.textContent` for both the
+  modern `planItems` rows and the legacy flat-`plan` fallback. **Purely a
+  render-time decoration, not a new data shape**: `commitOnBlur` still
+  reads `el.textContent` on blur, which strips the `<a>` wrapper back down
+  to the plain URL string, so editing/saving round-trips exactly as
+  before. Clicking a link inside a `contenteditable` region doesn't
+  navigate by default (browsers require ctrl/cmd-click there), so this
+  doesn't fight with normal in-place text editing. New CSS rule (`.field
+  a, .plan-item a`) added next to `.nav-link` in all three per-trip
+  `<style>` blocks (`template/`, `kyushu-dec-2026/`,
+  `australia-dec-2026/`) for consistency with the codebase's existing
+  "propagate to all three files" pattern. `scripts/build-public.mjs` got
+  the matching `linkify()` treatment (same regex, wraps `esc()`) applied
+  to itinerary plan-item text, so the public snapshot page also shows a
+  clickable link — it inherits the same new CSS rule automatically since
+  it extracts its `<style>` block live from `template/index.html` at
+  generation time.
+  **A real near-miss worth flagging for future sessions:** the first
+  attempt at writing the actual Visit Japan Web URL into Firebase via
+  `curl -d "...em-dash..."` silently mangled every em-dash into `�` —
+  a Windows/Git-Bash shell encoding issue with inline `-d` string
+  arguments, not a Firebase or JSON problem. Fixed by writing the payload
+  to a UTF-8 file first and using `curl --data-binary @file`, then
+  re-fetching to confirm the stored bytes were actually correct rather
+  than trusting curl's echoed response (which also looked mangled, so it
+  would have been caught either way — but don't skip the re-fetch check
+  next time non-ASCII punctuation is being written via this route).
+  Also worth recording: the URL itself (`vjw-lp.digital.go.jp`) that
+  would have been written from general knowledge turned out to be stale —
+  it now 301-redirects to `services.digital.go.jp/en/visit-japan-web/`.
+  Caught only by actually fetching it before writing it into trip data
+  the user will click before a flight — don't skip that verification step
+  for any URL going into card content, even a well-known one.
 
 ## Known limitations (already communicated to the user — don't "fix" silently)
 

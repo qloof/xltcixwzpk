@@ -503,6 +503,17 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
     el.classList.add('field-saved');
     setTimeout(() => el.classList.remove('field-saved'), 500);
   }
+  // Renders http(s) URLs in a plan-item row as clickable links, while the
+  // underlying stored value stays plain text — commitOnBlur reads back
+  // el.textContent, which strips the <a> wrapper and returns the same URL
+  // string that was typed, so this is purely a render-time decoration, not
+  // a new data shape. Clicking a link inside a contenteditable region
+  // doesn't navigate by default (browsers require ctrl/cmd-click there),
+  // so this doesn't fight with normal text editing.
+  function linkifyText(text) {
+    const escaped = String(text ?? '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+    return escaped.replace(/(https?:\/\/[^\s<]+[^\s<.,;:!?)])/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+  }
   function commitOnBlur(el, writePath, isCheckbox) {
     commitOnEnter(el);
     el.addEventListener('blur', () => {
@@ -622,7 +633,7 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
         row.className = 'plan-item plan-item-legacy';
         row.innerHTML = `<span contenteditable="true"></span>`;
         const span = row.querySelector('span');
-        span.textContent = day.plan;
+        span.innerHTML = linkifyText(day.plan);
         commitOnBlur(span, `trips/${tripId}/itinerary/${key}/plan`);
         container.appendChild(row);
         return;
@@ -638,7 +649,7 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
           <span contenteditable="true"></span>
           <button class="remove-row" data-remove>✕</button>`;
         const span = row.querySelector('span[contenteditable]');
-        span.textContent = item.text ?? '';
+        span.innerHTML = linkifyText(item.text);
         commitOnBlur(span, `trips/${tripId}/itinerary/${key}/planItems/${itemKey}/text`);
         row.querySelector('[data-remove]').onclick = () => dbSet(`trips/${tripId}/itinerary/${key}/planItems/${itemKey}`, null);
         const upBtn = row.querySelector('[data-move-up]');

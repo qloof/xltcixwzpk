@@ -108,6 +108,12 @@ function esc(s) {
   }[c]));
 }
 
+// Same approach as app.js's linkifyText: escape first, then wrap bare
+// http(s) URLs as clickable links — kept in sync with that function.
+function linkify(s) {
+  return esc(s).replace(/(https?:\/\/[^\s<]+[^\s<.,;:!?)])/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+}
+
 function fmtDate(iso) {
   if (!iso) return '';
   const d = new Date(iso + 'T00:00:00');
@@ -132,8 +138,8 @@ function renderItinerary(trip) {
   return days.map((day) => {
     const planItems = Object.values(day.planItems || {}).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     const planHtml = planItems.length
-      ? planItems.map((p) => `<div class="field">${esc(p.text)}</div>`).join('')
-      : (day.plan ? `<div class="field">${esc(day.plan)}</div>` : '');
+      ? planItems.map((p) => `<div class="field">${linkify(p.text)}</div>`).join('')
+      : (day.plan ? `<div class="field">${linkify(day.plan)}</div>` : '');
     return `<div class="card">
       <div class="date-display"><div class="date-weekday">${esc(fmtDate(day.date))}</div></div>
       <div class="field"><span class="field-label">Location</span>${esc(day.location)}</div>
