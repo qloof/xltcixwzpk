@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#16233F">
+<meta name="robots" content="noindex, nofollow">
+<title>Australia Road Trip — Trip Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #16233F;
+    --ink-soft: #4A5872;
+    --paper: #FAF9F5;
+    --paper-dim: #F0EEE6;
+    --brass: #B8862F;
+    --brass-soft: #E8D9B8;
+    --teal: #2F6E63;
+    --line: #D9D5C7;
+    --card: #FFFFFF;
+    --radius: 2px;
+    --font-display: 'Fraunces', serif;
+    --font-body: 'IBM Plex Sans', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--paper-dim); color: var(--ink); font-family: var(--font-body); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 24px 20px 80px; }
+
+  .stub { background: var(--ink); color: var(--paper); border-radius: var(--radius); position: relative; display: grid; grid-template-columns: 1fr auto; overflow: hidden; }
+  .stub-main { padding: 28px 28px 22px; }
+  .stub-eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--brass-soft); margin: 0 0 10px; }
+  .stub-title { font-family: var(--font-display); font-weight: 600; font-size: clamp(28px, 5vw, 40px); margin: 0 0 6px; line-height: 1.05; }
+  .stub-title[contenteditable]:focus, [contenteditable]:focus { outline: 1px dashed var(--brass); outline-offset: 4px; }
+  /* Brief flash right after a field's value is written (see flashSaved() in
+     the script) — the visible "yes, that was received" moment for a field
+     you just committed by pressing Enter or clicking away, since there's
+     otherwise no on-screen confirmation that the edit actually landed. */
+  [contenteditable] { transition: background-color 0.6s ease; }
+  [contenteditable].field-saved { background-color: rgba(47, 110, 99, 0.16); }
+  .stub-sub { font-family: var(--font-mono); font-size: 13px; color: var(--paper-dim); opacity: 0.75; margin: 0; }
+  .stub-status { display: inline-block; margin-top: 14px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 10px; border: 1px solid var(--brass); color: var(--brass-soft); border-radius: 999px; }
+  .stub-ticket { border-left: 1px dashed rgba(250,249,245,0.35); padding: 28px 22px; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; text-align: right; min-width: 150px; position: relative; }
+  .stub-ticket::before, .stub-ticket::after { content: ""; position: absolute; width: 18px; height: 18px; background: var(--paper-dim); border-radius: 50%; left: -9px; }
+  .stub-ticket::before { top: -9px; }
+  .stub-ticket::after { bottom: -9px; }
+  .ticket-no { font-family: var(--font-mono); font-size: 12px; color: var(--brass-soft); letter-spacing: 0.06em; }
+  .ticket-days { font-family: var(--font-display); font-size: 34px; font-weight: 600; margin-top: 8px; }
+  .ticket-days-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--paper-dim); opacity: 0.7; }
+  @media (max-width: 560px) {
+    .stub { grid-template-columns: 1fr; }
+    .stub-ticket { border-left: none; border-top: 1px dashed rgba(250,249,245,0.35); flex-direction: row; align-items: center; text-align: left; }
+    .stub-ticket::before, .stub-ticket::after { left: auto; top: -9px; }
+    .stub-ticket::before { right: 20%; }
+    .stub-ticket::after { right: 20%; top: auto; bottom: -9px; }
+  }
+
+  .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 10px 2px 0; flex-wrap: wrap; }
+  .sync-status { font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); display: flex; align-items: center; gap: 6px; }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: #C9A227; }
+  .sync-dot.ok { background: var(--teal); }
+  .sync-dot.offline { background: #A8455A; }
+  .toolbar-right { display: flex; align-items: center; gap: 10px; }
+  .name-input { font-family: var(--font-mono); font-size: 11px; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 4px 8px; width: 120px; }
+  .print-btn { font-family: var(--font-mono); font-size: 11px; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 5px 10px; cursor: pointer; }
+  .print-btn:hover { background: var(--brass-soft); }
+  .share-panel { display: none; flex-direction: column; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; margin: 0 0 16px; }
+  .share-panel.show { display: flex; }
+  .share-panel img { display: block; border: 1px solid var(--line); border-radius: var(--radius); }
+  .share-url { font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); word-break: break-all; text-align: center; max-width: 320px; }
+
+  .tabs { display: flex; gap: 2px; margin: 14px 0 0; background: var(--line); border-radius: var(--radius); padding: 2px; overflow-x: auto; }
+  .tab { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; background: transparent; border: none; padding: 10px 16px; color: var(--ink-soft); cursor: pointer; white-space: nowrap; border-radius: var(--radius); }
+  .tab.active { background: var(--card); color: var(--ink); font-weight: 600; }
+  .panel { display: none; margin-top: 20px; }
+  .panel.active { display: block; }
+  section h2 { font-family: var(--font-display); font-weight: 600; font-size: 20px; margin: 0 0 4px; }
+  .section-hint { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-soft); margin: 0 0 16px; }
+  /* Only the Bookings panel currently stacks multiple <section>s in one
+     panel (Flights / Accommodations / Car Rental) — same "sub-groups
+     inside one tab" idea as Checklists' tiers, just built from cards
+     instead of a checklist tier, so it needs its own section spacing. */
+  .panel section + section { margin-top: 28px; }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 12px; }
+  .card.is-today { border-color: var(--brass); box-shadow: 0 0 0 1px var(--brass); }
+  .card-row { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-bottom: 8px; }
+  .day-label-group { display: flex; align-items: center; gap: 8px; }
+  .day-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brass); font-weight: 600; }
+  .today-tag { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; background: var(--brass); color: var(--paper); padding: 2px 7px; border-radius: 999px; }
+  .move-btns { display: flex; gap: 3px; margin-left: 4px; }
+  .move-btn { font-family: var(--font-mono); font-size: 10px; color: var(--ink-soft); background: none; border: 1px solid var(--line); border-radius: var(--radius); cursor: pointer; padding: 1px 6px; line-height: 1.5; }
+  .move-btn:hover:not(:disabled) { background: var(--paper-dim); color: var(--ink); border-color: var(--brass); }
+  .move-btn:disabled { opacity: 0.25; cursor: default; }
+  .date-display { margin: 2px 0; }
+  .date-weekday { font-family: var(--font-mono); font-weight: 700; font-size: 14px; color: var(--ink); text-transform: uppercase; letter-spacing: 0.04em; }
+  .date-numeric { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-soft); margin-top: 1px; }
+  .day-date-input { font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); background: var(--paper-dim); border: 1px solid var(--line); border-radius: var(--radius); padding: 3px 6px; margin-top: 4px; }
+  .field { padding: 6px 0; border-bottom: 1px dotted var(--line); font-size: 14.5px; min-height: 20px; }
+  .field:last-child { border-bottom: none; }
+  .field-label { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); display: block; margin-bottom: 2px; }
+  .card-links { display: flex; align-items: center; gap: 14px; padding: 6px 0; flex-wrap: wrap; }
+  .coords-toggle { font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); background: none; border: none; cursor: pointer; padding: 0; text-decoration: underline dotted; }
+  .nav-link { font-family: var(--font-mono); font-size: 11px; color: var(--teal); text-decoration: none; font-weight: 600; }
+  .nav-link:hover { text-decoration: underline; }
+  .coords-row { display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px dotted var(--line); }
+  .coords-row.hidden { display: none; }
+  .coords-row input { font-family: var(--font-mono); font-size: 13px; color: var(--ink); border: none; border-bottom: 1px dotted transparent; background: transparent; width: 90px; padding: 2px 0; }
+  .coords-row input:focus { outline: 1px dashed var(--brass); outline-offset: 2px; }
+  .weather-line { font-family: var(--font-mono); font-size: 12px; color: var(--teal); margin-top: 6px; }
+  .weather-line.muted { color: var(--ink-soft); font-style: italic; }
+  .drive-line { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); margin-top: 4px; }
+  .drive-line.muted { font-style: italic; }
+  .geocode-feedback { font-family: var(--font-mono); font-size: 11px; color: var(--brass); margin: 4px 0 0; display: none; }
+  .geocode-feedback.show { display: block; }
+
+  .add-row { font-family: var(--font-mono); font-size: 12px; color: var(--brass); background: none; border: 1px dashed var(--brass); border-radius: var(--radius); padding: 8px 12px; cursor: pointer; width: 100%; text-align: left; margin-top: 4px; }
+  .add-row:hover { background: var(--brass-soft); }
+  .remove-row { font-family: var(--font-mono); font-size: 10.5px; color: #A8455A; background: none; border: none; cursor: pointer; padding: 6px 0 0; text-align: left; }
+
+  .tier { margin-bottom: 22px; }
+  .tier-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+  .tier-head-left { display: flex; align-items: center; gap: 10px; }
+  .tier-head .tag { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; background: var(--ink); color: var(--paper); padding: 3px 9px; border-radius: 999px; }
+  .tier-add { font-family: var(--font-mono); font-size: 11px; color: var(--brass); background: none; border: none; cursor: pointer; }
+  .check-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px dotted var(--line); }
+  .check-item:last-child { border-bottom: none; }
+  .check-item input[type="checkbox"] { margin-top: 3px; accent-color: var(--teal); width: 16px; height: 16px; flex-shrink: 0; }
+  .check-item span { font-size: 14.5px; outline: none; flex: 1; }
+  .check-item input:checked + span { text-decoration: line-through; color: var(--ink-soft); }
+  .check-item .remove-row { flex-shrink: 0; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; text-align: left; color: var(--ink-soft); padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  td { padding: 10px 10px; border-bottom: 1px dotted var(--line); }
+  td:not(:first-child), th:not(:first-child) { text-align: right; font-family: var(--font-mono); }
+  tr.total td { font-weight: 600; border-top: 2px solid var(--ink); border-bottom: none; font-family: var(--font-mono); }
+  .currency-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+  .currency-select { font-family: var(--font-mono); font-size: 12px; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 4px 8px; }
+  .fx-line { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-soft); margin-top: 10px; font-style: italic; }
+
+  .help-group-title { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brass); font-weight: 600; margin: 26px 0 10px; }
+  .help-group-title:first-child { margin-top: 0; }
+  .help-item { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 10px; }
+  .help-title { font-weight: 700; font-size: 14.5px; color: var(--ink); margin: 0 0 5px; }
+  .help-item p { margin: 0; font-size: 14px; color: var(--ink-soft); line-height: 1.55; }
+
+  .contact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .contact-card .field-label { margin-top: 8px; }
+  .contact-card .field-label:first-child { margin-top: 0; }
+
+  .extra-note { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); background: var(--brass-soft); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 16px; }
+  footer { margin-top: 40px; padding-top: 14px; border-top: 1px dashed var(--line); font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); text-align: center; }
+
+  #mapView { height: 360px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); }
+  .leaflet-popup-content { font-family: var(--font-body); font-size: 13px; }
+
+  .offline-banner { display: none; font-family: var(--font-mono); font-size: 11.5px; color: #7A3B10; background: #F3DCC0; border: 1px solid #D9A15C; border-radius: var(--radius); padding: 8px 12px; margin-top: 10px; }
+  .offline-banner.show { display: block; }
+
+  @media print {
+    .tabs, .add-row, .remove-row, .tier-add, .toolbar, #mapView, .offline-banner, .share-panel, #help { display: none !important; }
+    .panel { display: block !important; margin-top: 14px; }
+    .card { break-inside: avoid; }
+    body { background: #fff; }
+  }
+</style>
+<style>
+  .readonly-banner { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); background: var(--brass-soft); border-radius: var(--radius); padding: 10px 14px; margin: 14px 0; }
+  .tabs a.tab { text-decoration: none; display: inline-block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="stub">
+    <div class="stub-main">
+      <p class="stub-eyebrow">Road Trip Dashboard — Preview</p>
+      <h1 class="stub-title">Australia Road Trip</h1>
+      <p class="stub-sub">Sydney → Blue Mountains → Melbourne → Great Ocean Road · Dec 8 – Dec 21, 2026 (draft)</p>
+    </div>
+  </div>
+  <p class="readonly-banner">📖 Read-only shareable preview, generated 2026-08-27 — not live, and some details (budget, packing lists, booking confirmation numbers) are left out on purpose. Ask for the latest if plans have changed.</p>
+
+  <section><h2>Day by day</h2><div class="card">
+      <div class="date-display"><div class="date-weekday">Tue, Dec 8, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Sydney</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=-33.8698439,151.2082848&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Sydney/@-33.8698439,151.2082848,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">Arrive, check in, evening walk — Sydney Opera House &amp; Harbour Bridge (Circular Quay)</div>
+      <div class="field"><span class="field-label">Lodging</span>[Sydney hotel — TBD]</div>
+      <div class="field"><span class="field-label">Alternate</span>Rainy option: Sydney Aquarium / Sea Life</div>
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Wed, Dec 9, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Sydney — Bondi</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=-33.8908,151.2743&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Sydney%20%E2%80%94%20Bondi/@-33.8908,151.2743,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">Bondi to Coogee coastal walk, Bondi Beach</div>
+      <div class="field"><span class="field-label">Lodging</span>[Sydney hotel — TBD]</div>
+      <div class="field"><span class="field-label">Alternate</span>Rainy option: Art Gallery of NSW</div>
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Thu, Dec 10, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Blue Mountains</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=-33.7333,150.3117&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Blue%20Mountains/@-33.7333,150.3117,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">Day trip — Three Sisters lookout, Scenic World cable car</div>
+      <div class="field"><span class="field-label">Lodging</span>[Sydney hotel — TBD]</div>
+      <div class="field"><span class="field-label">Alternate</span>Jenolan Caves (indoor, weatherproof)</div>
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Fri, Dec 11, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Melbourne</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=-37.8136,144.9631&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Melbourne/@-37.8136,144.9631,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">Flight to Melbourne, explore laneways &amp; Queen Victoria Market</div>
+      <div class="field"><span class="field-label">Lodging</span>[Melbourne hotel — TBD]</div>
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Sat, Dec 12, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Great Ocean Road — Twelve Apostles</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=-38.6619,143.105&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Great%20Ocean%20Road%20%E2%80%94%20Twelve%20Apostles/@-38.6619,143.105,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">Twelve Apostles, Loch Ard Gorge</div>
+      <div class="field"><span class="field-label">Lodging</span>[Apollo Bay / Port Campbell — TBD]</div>
+      <div class="field"><span class="field-label">Alternate</span>Push straight through to Twelve Apostles if weather closes lookouts</div>
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Sun, Dec 13, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Phillip Island</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=-38.515,145.15&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Phillip%20Island/@-38.515,145.15,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">Penguin Parade (book ahead)</div>
+      <div class="field"><span class="field-label">Lodging</span>[Melbourne hotel — TBD]</div>
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Mon, Dec 21, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Melbourne</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=-37.8136,144.9631&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Melbourne/@-37.8136,144.9631,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">Depart — fly home</div>
+      
+      
+    </div></section>
+  <section><h2>Contacts</h2><div class="contact-grid"><div class="card contact-card">
+    <div class="field-label">Sydney hotel (Dec 8–11)</div>
+    <div class="field">[TBD]</div>
+  </div><div class="card contact-card">
+    <div class="field-label">Melbourne hotel (Dec 11–21)</div>
+    <div class="field">[TBD]</div>
+  </div><div class="card contact-card">
+    <div class="field-label">Rental car company</div>
+    <div class="field">[TBD]</div>
+  </div><div class="card contact-card">
+    <div class="field-label">Emergency contact — home</div>
+    <div class="field">[TBD]</div>
+  </div></div></section>
+  <section><h2>Language</h2><p class="section-hint">None listed.</p></section>
+  <section><h2>Extras</h2><div class="card">
+    <div class="field">Travel insurance policy #</div>
+    <div class="field"><span class="field-label">Notes</span>[TBD once purchased]</div>
+  </div></section>
+  <section><h2>Bookings</h2><section><h2>✈ Flights</h2><p class="section-hint">None listed.</p></section>
+  <section><h2>🏨 Accommodations</h2><p class="section-hint">None listed.</p></section>
+  <section><h2>🚗 Car Rental</h2><p class="section-hint">None listed.</p></section></section>
+
+  <footer>Generated 2026-08-27 from the live trip dashboard — static, read-only snapshot.</footer>
+</div>
+</body>
+</html>

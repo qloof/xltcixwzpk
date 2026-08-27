@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#16233F">
+<meta name="robots" content="noindex, nofollow">
+<title>Kyushu Road Trip — Trip Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #16233F;
+    --ink-soft: #4A5872;
+    --paper: #FAF9F5;
+    --paper-dim: #F0EEE6;
+    --brass: #B8862F;
+    --brass-soft: #E8D9B8;
+    --teal: #2F6E63;
+    --line: #D9D5C7;
+    --card: #FFFFFF;
+    --radius: 2px;
+    --font-display: 'Fraunces', serif;
+    --font-body: 'IBM Plex Sans', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--paper-dim); color: var(--ink); font-family: var(--font-body); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 24px 20px 80px; }
+
+  .stub { background: var(--ink); color: var(--paper); border-radius: var(--radius); position: relative; display: grid; grid-template-columns: 1fr auto; overflow: hidden; }
+  .stub-main { padding: 28px 28px 22px; }
+  .stub-eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--brass-soft); margin: 0 0 10px; }
+  .stub-title { font-family: var(--font-display); font-weight: 600; font-size: clamp(28px, 5vw, 40px); margin: 0 0 6px; line-height: 1.05; }
+  .stub-title[contenteditable]:focus, [contenteditable]:focus { outline: 1px dashed var(--brass); outline-offset: 4px; }
+  /* Brief flash right after a field's value is written (see flashSaved() in
+     the script) — the visible "yes, that was received" moment for a field
+     you just committed by pressing Enter or clicking away, since there's
+     otherwise no on-screen confirmation that the edit actually landed. */
+  [contenteditable] { transition: background-color 0.6s ease; }
+  [contenteditable].field-saved { background-color: rgba(47, 110, 99, 0.16); }
+  .stub-sub { font-family: var(--font-mono); font-size: 13px; color: var(--paper-dim); opacity: 0.75; margin: 0; }
+  .stub-status { display: inline-block; margin-top: 14px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 10px; border: 1px solid var(--brass); color: var(--brass-soft); border-radius: 999px; }
+  .stub-ticket { border-left: 1px dashed rgba(250,249,245,0.35); padding: 28px 22px; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; text-align: right; min-width: 150px; position: relative; }
+  .stub-ticket::before, .stub-ticket::after { content: ""; position: absolute; width: 18px; height: 18px; background: var(--paper-dim); border-radius: 50%; left: -9px; }
+  .stub-ticket::before { top: -9px; }
+  .stub-ticket::after { bottom: -9px; }
+  .ticket-no { font-family: var(--font-mono); font-size: 12px; color: var(--brass-soft); letter-spacing: 0.06em; }
+  .ticket-days { font-family: var(--font-display); font-size: 34px; font-weight: 600; margin-top: 8px; }
+  .ticket-days-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--paper-dim); opacity: 0.7; }
+  @media (max-width: 560px) {
+    .stub { grid-template-columns: 1fr; }
+    .stub-ticket { border-left: none; border-top: 1px dashed rgba(250,249,245,0.35); flex-direction: row; align-items: center; text-align: left; }
+    .stub-ticket::before, .stub-ticket::after { left: auto; top: -9px; }
+    .stub-ticket::before { right: 20%; }
+    .stub-ticket::after { right: 20%; top: auto; bottom: -9px; }
+  }
+
+  .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 10px 2px 0; flex-wrap: wrap; }
+  .sync-status { font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); display: flex; align-items: center; gap: 6px; }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: #C9A227; }
+  .sync-dot.ok { background: var(--teal); }
+  .sync-dot.offline { background: #A8455A; }
+  .toolbar-right { display: flex; align-items: center; gap: 10px; }
+  .name-input { font-family: var(--font-mono); font-size: 11px; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 4px 8px; width: 120px; }
+  .print-btn { font-family: var(--font-mono); font-size: 11px; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 5px 10px; cursor: pointer; }
+  .print-btn:hover { background: var(--brass-soft); }
+  .share-panel { display: none; flex-direction: column; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; margin: 0 0 16px; }
+  .share-panel.show { display: flex; }
+  .share-panel img { display: block; border: 1px solid var(--line); border-radius: var(--radius); }
+  .share-url { font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); word-break: break-all; text-align: center; max-width: 320px; }
+
+  .tabs { display: flex; gap: 2px; margin: 14px 0 0; background: var(--line); border-radius: var(--radius); padding: 2px; overflow-x: auto; }
+  .tab { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; background: transparent; border: none; padding: 10px 16px; color: var(--ink-soft); cursor: pointer; white-space: nowrap; border-radius: var(--radius); }
+  .tab.active { background: var(--card); color: var(--ink); font-weight: 600; }
+  .panel { display: none; margin-top: 20px; }
+  .panel.active { display: block; }
+  section h2 { font-family: var(--font-display); font-weight: 600; font-size: 20px; margin: 0 0 4px; }
+  .section-hint { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-soft); margin: 0 0 16px; }
+  /* Only the Bookings panel currently stacks multiple <section>s in one
+     panel (Flights / Accommodations / Car Rental) — same "sub-groups
+     inside one tab" idea as Checklists' tiers, just built from cards
+     instead of a checklist tier, so it needs its own section spacing. */
+  .panel section + section { margin-top: 28px; }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 12px; }
+  .card.is-today { border-color: var(--brass); box-shadow: 0 0 0 1px var(--brass); }
+  .card-row { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-bottom: 8px; }
+  .day-label-group { display: flex; align-items: center; gap: 8px; }
+  .day-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brass); font-weight: 600; }
+  .today-tag { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; background: var(--brass); color: var(--paper); padding: 2px 7px; border-radius: 999px; }
+  .move-btns { display: flex; gap: 3px; margin-left: 4px; }
+  .move-btn { font-family: var(--font-mono); font-size: 10px; color: var(--ink-soft); background: none; border: 1px solid var(--line); border-radius: var(--radius); cursor: pointer; padding: 1px 6px; line-height: 1.5; }
+  .move-btn:hover:not(:disabled) { background: var(--paper-dim); color: var(--ink); border-color: var(--brass); }
+  .move-btn:disabled { opacity: 0.25; cursor: default; }
+  .date-display { margin: 2px 0; }
+  .date-weekday { font-family: var(--font-mono); font-weight: 700; font-size: 14px; color: var(--ink); text-transform: uppercase; letter-spacing: 0.04em; }
+  .date-numeric { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-soft); margin-top: 1px; }
+  .day-date-input { font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); background: var(--paper-dim); border: 1px solid var(--line); border-radius: var(--radius); padding: 3px 6px; margin-top: 4px; }
+  .field { padding: 6px 0; border-bottom: 1px dotted var(--line); font-size: 14.5px; min-height: 20px; }
+  .field:last-child { border-bottom: none; }
+  .field-label { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); display: block; margin-bottom: 2px; }
+  .card-links { display: flex; align-items: center; gap: 14px; padding: 6px 0; flex-wrap: wrap; }
+  .coords-toggle { font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); background: none; border: none; cursor: pointer; padding: 0; text-decoration: underline dotted; }
+  .nav-link { font-family: var(--font-mono); font-size: 11px; color: var(--teal); text-decoration: none; font-weight: 600; }
+  .nav-link:hover { text-decoration: underline; }
+  .coords-row { display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px dotted var(--line); }
+  .coords-row.hidden { display: none; }
+  .coords-row input { font-family: var(--font-mono); font-size: 13px; color: var(--ink); border: none; border-bottom: 1px dotted transparent; background: transparent; width: 90px; padding: 2px 0; }
+  .coords-row input:focus { outline: 1px dashed var(--brass); outline-offset: 2px; }
+  .weather-line { font-family: var(--font-mono); font-size: 12px; color: var(--teal); margin-top: 6px; }
+  .weather-line.muted { color: var(--ink-soft); font-style: italic; }
+  .drive-line { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); margin-top: 4px; }
+  .drive-line.muted { font-style: italic; }
+  .geocode-feedback { font-family: var(--font-mono); font-size: 11px; color: var(--brass); margin: 4px 0 0; display: none; }
+  .geocode-feedback.show { display: block; }
+
+  .add-row { font-family: var(--font-mono); font-size: 12px; color: var(--brass); background: none; border: 1px dashed var(--brass); border-radius: var(--radius); padding: 8px 12px; cursor: pointer; width: 100%; text-align: left; margin-top: 4px; }
+  .add-row:hover { background: var(--brass-soft); }
+  .remove-row { font-family: var(--font-mono); font-size: 10.5px; color: #A8455A; background: none; border: none; cursor: pointer; padding: 6px 0 0; text-align: left; }
+
+  .tier { margin-bottom: 22px; }
+  .tier-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+  .tier-head-left { display: flex; align-items: center; gap: 10px; }
+  .tier-head .tag { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; background: var(--ink); color: var(--paper); padding: 3px 9px; border-radius: 999px; }
+  .tier-add { font-family: var(--font-mono); font-size: 11px; color: var(--brass); background: none; border: none; cursor: pointer; }
+  .check-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px dotted var(--line); }
+  .check-item:last-child { border-bottom: none; }
+  .check-item input[type="checkbox"] { margin-top: 3px; accent-color: var(--teal); width: 16px; height: 16px; flex-shrink: 0; }
+  .check-item span { font-size: 14.5px; outline: none; flex: 1; }
+  .check-item input:checked + span { text-decoration: line-through; color: var(--ink-soft); }
+  .check-item .remove-row { flex-shrink: 0; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; text-align: left; color: var(--ink-soft); padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  td { padding: 10px 10px; border-bottom: 1px dotted var(--line); }
+  td:not(:first-child), th:not(:first-child) { text-align: right; font-family: var(--font-mono); }
+  tr.total td { font-weight: 600; border-top: 2px solid var(--ink); border-bottom: none; font-family: var(--font-mono); }
+  .currency-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+  .currency-select { font-family: var(--font-mono); font-size: 12px; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 4px 8px; }
+  .fx-line { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-soft); margin-top: 10px; font-style: italic; }
+
+  .help-group-title { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brass); font-weight: 600; margin: 26px 0 10px; }
+  .help-group-title:first-child { margin-top: 0; }
+  .help-item { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 10px; }
+  .help-title { font-weight: 700; font-size: 14.5px; color: var(--ink); margin: 0 0 5px; }
+  .help-item p { margin: 0; font-size: 14px; color: var(--ink-soft); line-height: 1.55; }
+
+  .contact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .contact-card .field-label { margin-top: 8px; }
+  .contact-card .field-label:first-child { margin-top: 0; }
+
+  .extra-note { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); background: var(--brass-soft); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 16px; }
+  footer { margin-top: 40px; padding-top: 14px; border-top: 1px dashed var(--line); font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); text-align: center; }
+
+  #mapView { height: 360px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); }
+  .leaflet-popup-content { font-family: var(--font-body); font-size: 13px; }
+
+  .offline-banner { display: none; font-family: var(--font-mono); font-size: 11.5px; color: #7A3B10; background: #F3DCC0; border: 1px solid #D9A15C; border-radius: var(--radius); padding: 8px 12px; margin-top: 10px; }
+  .offline-banner.show { display: block; }
+
+  @media print {
+    .tabs, .add-row, .remove-row, .tier-add, .toolbar, #mapView, .offline-banner, .share-panel, #help { display: none !important; }
+    .panel { display: block !important; margin-top: 14px; }
+    .card { break-inside: avoid; }
+    body { background: #fff; }
+  }
+</style>
+<style>
+  .readonly-banner { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); background: var(--brass-soft); border-radius: var(--radius); padding: 10px 14px; margin: 14px 0; }
+  .tabs a.tab { text-decoration: none; display: inline-block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="stub">
+    <div class="stub-main">
+      <p class="stub-eyebrow">Road Trip Dashboard — Preview</p>
+      <h1 class="stub-title">Kyushu Road Trip</h1>
+      <p class="stub-sub">Fukuoka loop — Nagasaki, Kumamoto, Takachiho, Kurokawa, Kirishima, Kagoshima · Dec 17 – 29, 2026</p>
+    </div>
+  </div>
+  <p class="readonly-banner">📖 Read-only shareable preview, generated 2026-08-27 — not live, and some details (budget, packing lists, booking confirmation numbers) are left out on purpose. Ask for the latest if plans have changed.</p>
+
+  <section><h2>Day by day</h2><div class="card">
+      <div class="date-display"><div class="date-weekday">Thu, Dec 17, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Depart Singapore</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=1.3644,103.9915&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Depart%20Singapore/@1.3644,103.9915,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">9:00pm — Depart Singapore Changi T2 (TG410 via Bangkok).</div><div class="field">Overnight in transit — not staying in Fukuoka tonight; TG648 continues on from Bangkok, landing Fukuoka the morning of Dec 18.</div>
+      <div class="field"><span class="field-label">Lodging</span>In transit</div>
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Fri, Dec 18, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Fukuoka Airport → Hotel Monte Hermana Fukuoka</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=33.5858269,130.404844&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Fukuoka%20Airport%20%E2%86%92%20Hotel%20Monte%20Hermana%20Fukuoka/@33.5858269,130.404844,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">8:10am — Land Fukuoka (TG648).</div><div class="field">8:10am–9:45am — Immigration, customs, luggage (estimate, not verified against a live wait-time source — treat as a bad-day upper bound, not a guarantee).</div><div class="field">~9:45am — Hi-Hi Car Rental is NOT physically at the terminal — confirmed via their own site: they run a free shuttle (~10min from the International Terminal, or a 1min walk from Fukuoka Airport Station) to their off-site shop. Walk to the shuttle pickup point, ride over. This adds real time the original plan didn&#39;t budget for.</div><div class="field">~10:00am — Arrive Hi-Hi&#39;s shop, complete rental paperwork (~15-20min). Explicitly verify studless winter tires are fitted AND noted on the contract before driving off.</div><div class="field">~10:20am — Depart with the car. Drive to Hotel Monte Hermana Fukuoka (3-4-24 Watanabedori), ~15-20min, arriving ~10:35-10:40am.</div><div class="field">~10:45am — Drop bags at front desk (held until 3:00pm check-in). Message the hotel ahead: &#39;Arriving via morning flight TG648 on Dec 18, please preserve booking for afternoon check-in.&#39; Buffer before the 11:30am strict lunch departure is now tighter than the original plan assumed (accounting for the shuttle+paperwork) — still workable, but less slack if immigration runs long.</div><div class="field">Park the car at TRUST PARK or Central Parking Lot (both on the same block, 3-chome Watanabedori) instead of the hotel&#39;s own lot — day+overnight cap ≈¥1,300–1,400, same ballpark as the hotel&#39;s ¥1,500 but no first-come-first-served risk and no uncertainty about pre-3:00pm access. Car stays parked here for the rest of the day — get around on foot/subway instead.</div>
+      <div class="field"><span class="field-label">Lodging</span>Hotel Monte Hermana Fukuoka — BOOKED, check-in 3:00pm (bags held from ~10:45am)</div>
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Fri, Dec 18, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Lunch — Taiho Ramen (Tenjin-Imaizumi)</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=33.5872545,130.4003084&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Lunch%20%E2%80%94%20Taiho%20Ramen%20(Tenjin-Imaizumi)/@33.5872545,130.4003084,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">Lunch, whenever hunger/energy dictates after the morning&#39;s immigration + shuttle + paperwork chain — not a strict clock target. Reframed 2026-08-25: the original &#39;strict 11:30am departure&#39; framing existed only to beat Shin-Shin&#39;s midday queue, but the default pick below (Taiho Ramen) has no queue risk at all, so there&#39;s no real reason to race the clock on Day 1 after an overnight flight.</div><div class="field">Default: Taiho Ramen, Tenjin-Imaizumi branch (1-23-8 Imaizumi) — genuine Kurume-style tonkotsu, Michelin-featured, ~5–10min walk from the hotel, open 10:30am–10:00pm. No queue risk, no timing pressure — go whenever.</div><div class="field">Hakata Issou (Hakata Station East) or Shin-Shin (Tenjin main store) are real, well-regarded alternatives — but treat them as an opportunistic bonus only if you&#39;re moving unusually fast and specifically want the detour, not the default. Shin-Shin especially has known 30–60min queues by midday, which is exactly the pressure the default (Taiho Ramen) avoids.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Fri, Dec 18, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Ohori Park / Fukuoka Castle ruins</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=33.5861263,130.3763271&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Ohori%20Park%20%2F%20Fukuoka%20Castle%20ruins/@33.5861263,130.3763271,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">1:00pm–3:00pm — Lake walk at Ohori Park, or Fukuoka Castle ruins in adjacent Maizuru Park — central, open, low-crowd option to shake off flight fatigue.</div><div class="field">Take the subway (Kūkō Line): board at Tenjin Station (K08), platform 2, direction &quot;Meinohama/Nishijin&quot;; alight one stop later at Ōhorikōen (K06), ~2min ride, right at the park. Fare ¥210 — tap in/out with an IC card (SUGOCA/Suica/etc.) or an EMV contactless credit card/phone (Fukuoka subway has taken tap-to-pay Visa/Mastercard/Amex/JCB/UnionPay, incl. Apple Pay/Google Pay, since 2022 at all 36 stations, daily cap ¥640) — no paper ticket needed. Return: board at Ōhorikōen direction &quot;Tenjin/Hakata/Airport.&quot; Faster than the ~38–40min walk and the car stays parked rather than being re-driven. Walking is fine too if preferred (fits the &lt;45min threshold), just costs more of the 2-hour window.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Fri, Dec 18, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Watanabe-dori Yatai (dinner)</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=33.5838934,130.4051825&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Watanabe-dori%20Yatai%20(dinner)/@33.5838934,130.4051825,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">6:00pm — Skip Nakasu Yatai (touristy, cramped, overpriced) — go to Watanabe-dori yatai instead: newer, more stalls than Nakasu, less touting, fixed pricing, and literally on the hotel&#39;s street (2min walk to Watanabe-dori subway station).</div><div class="field">Try Hakata Hitokuchi Gyoza and Mentaiko Tamagoyaki.</div><div class="field">Alternative further out: Nagahama yatai cluster (~25–35min walk, realistically a taxi).</div><div class="field">Walk — 2min from the hotel. Car stays parked at TRUST PARK/Central Parking Lot from earlier in the day, no need to move it for dinner.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Sat, Dec 19, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Nagasaki — arrival logistics (Noyado Nagasaki)</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=32.7486201,129.879922&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Nagasaki%20%E2%80%94%20arrival%20logistics%20(Noyado%20Nagasaki)/@32.7486201,129.879922,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~9:30am — Checkout Hotel Monte Hermana Fukuoka (exact checkout time not yet confirmed against the booking PDF — verify before travel) and retrieve the car from TRUST PARK/Central Parking Lot, where it&#39;s been parked since Day 1.</div><div class="field">~10:00am — Route: Nishi-Kyushu Expressway → Nagasaki Expressway via Tosu, Takeo, Omura, Isahaya — ~147km, ~1h40m direct. Toll cost: ~¥2,400–3,500 (confirmed this pass — meaningfully lower than a second AI&#39;s ¥3,500–4,200 claim). Exact expressway naming/exit sequence still not independently verified — check before travel.</div><div class="field">~11:40am — On arrival: pull up curbside at Noyado Nagasaki (6-29 Uonomachi) to drop bags first, then move the car the short distance to TOP24パーキング魚の町 (6-30 Uonomachi, confirmed 24hr, overnight max ¥500) rather than parking first and carrying bags over — same total walking, less of it done carrying luggage. No on-site parking at the hotel.</div><div class="field">Check-in after 3:00pm. If arriving earlier, Dejima (see its own card below) is the natural way to fill the wait — an easy walk from the hotel.</div><div class="field">Meganebashi (Spectacles Bridge) is ~1min from the hotel — no separate trip needed, worth a walk-by whenever convenient, especially lit up at night.</div>
+      <div class="field"><span class="field-label">Lodging</span>Noyado Nagasaki — BOOKED, confirmation RYa0n91ank, check-in after 3:00pm. No on-site parking — use TOP24 Parking Uonomachi (24hr, overnight max ¥500) or other nearby coin lots.</div>
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Sat, Dec 19, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Dejima</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=32.7435,129.873&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Dejima/@32.7435,129.873,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~11:45am–1:00pm — Open 8:00am–9:00pm daily, ¥520 admission, open year-round with no December closures — confirmed. Good use of the pre-3:00pm check-in window.</div><div class="field">Reconstructed Dutch trading post — Japan&#39;s only window to the West during the Edo-era isolation policy. A natural first taste of Nagasaki&#39;s history before the Dec 20 deep dive (Glover Garden, Oura Cathedral, Mount Inasa).</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Sat, Dec 19, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Lunch — Tsuruchan (Toruko Rice)</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=32.7421771,129.881879&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Lunch%20%E2%80%94%20Tsuruchan%20(Toruko%20Rice)/@32.7421771,129.881879,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~1:15pm — 2-47 Aburayamachi, Nagasaki — confirmed real, Kyushu&#39;s oldest cafe (opened 1925), 9:00am–9:00pm daily.</div><div class="field">Famous for Toruko Rice (Turkish Rice): fried rice + Napolitan spaghetti + a pork cutlet in curry sauce on one plate, plus a frozen milkshake dessert — a genuinely Nagasaki-specific dish.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Sat, Dec 19, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Hamanomachi Arcade &amp; Kofuku-ji Temple (optional)</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=32.748,129.884&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Hamanomachi%20Arcade%20%26%20Kofuku-ji%20Temple%20(optional)/@32.748,129.884,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~2:30pm (optional) — Hamanomachi Arcade — covered shopping street network. Fukusaya (3-1 Funadaiku-machi, 9:00am–6:00pm) is the genuinely famous, long-established (est. 1624) castella maker — confirmed real, worth a stop if there&#39;s time.</div><div class="field">Kofuku-ji Temple (4-32 Teramachi) — oldest Zen temple in Nagasaki, founded c. 1620 by Chinese merchants, birthplace of the Obaku school of Zen. 9:00am–5:00pm, ~¥400 admission — confirmed. Alternative to Hamanomachi if history beats shopping.</div><div class="field">Optional — pick one, both, or skip entirely if the Dejima visit plus travel day already feels full. Nothing here is booked or time-sensitive.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Sat, Dec 19, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Dinner — Kairakuen (Nagasaki Chinatown)</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=32.74194,129.87583&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Dinner%20%E2%80%94%20Kairakuen%20(Nagasaki%20Chinatown)/@32.74194,129.87583,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~6:30pm — 11-11 Hamamachi, Nagasaki Shinchi Chinatown — 5-floor champon specialist, confirmed real, walking distance from the hotel.</div><div class="field">Shikairo (the &#39;birthplace of champon&#39; spot, near Glover Garden) was considered but is out by the harbor, not a short walk from here — better folded into a Dec 20 lunch while already over that side of town.</div><div class="field">Chinatown&#39;s lantern-lit streets are worth the evening walk regardless of where dinner actually happens.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Sun, Dec 20, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Atomic Bomb Museum &amp; Peace Park</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=32.7757,129.8632&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Atomic%20Bomb%20Museum%20%26%20Peace%20Park/@32.7757,129.8632,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~8:00am — Leave the hotel early via tram from Meganebashi — car stays parked at TOP24 all morning. This early start is deliberate buffer, not a rush: it protects the Shikairo lunch window later without needing to compress time here.</div><div class="field">UNDECIDED — pick one before travel: OPTION A (tram, current default in items a-d below): car stays parked at TOP24 all morning, guaranteed parking, but requires tram there + tram back to the hotel to retrieve the car + drive to Shikairo — the full back-and-forth. OPTION B (drive directly): the museum has its own on-site parking, confirmed real — 60 spaces, genuinely cheap (¥1 first hour + ¥30/200min). Drive there at ~8:00am, then drive straight to Shikairo/Glover Garden&#39;s Matsugae Machi #2 lot afterward — skips the tram entirely and the backtrack to the hotel.</div><div class="field">TRADEOFF: Option A guarantees a parking spot (TOP24 is spacious, already confirmed) but costs more total transit time (tram there, tram back, then drive). Option B is faster IF the museum&#39;s 60-space lot has room, and it&#39;s cheaper — but it&#39;s a small lot on the exact Sunday already flagged for tour-bus crowds, so there&#39;s real risk of arriving to a full lot and having to hunt for parking in a dense area instead. No safe default here — depends on risk tolerance for the parking gamble vs. the guaranteed-but-slower tram loop.</div><div class="field">Route confirmed: board at Meganebashi&#39;s east-side platform, direction &quot;Sōfukuji/Ishibashi&quot; (Route 4 or 5); ride ~4 stops to Nishihamanomachi (西浜町) — an official free-transfer hub — then transfer to a tram bound for Akasako (赤迫, Route 1 or 3), which passes Nagasaki Ekimae and Ōhashi before reaching the 原爆資料館 (Atomic Bomb Museum) stop. Fare ¥150/ride flat (day pass ¥600) — pay by IC card if possible: the Nishihamanomachi transfer is free within 30min on IC, but cash payers pay ¥150 on each leg (¥300 total) with no transfer discount. Board via the rear door, pay/exit via the front door near the driver. EMV contactless (tap card/phone) isn&#39;t confirmed for this tram specifically — unlike the Fukuoka subway, don&#39;t rely on it here; use an IC card as the safe default. Return trip reverses both legs.</div><div class="field">~9:00am — Atomic Bomb Museum: 8:30am–5:30pm daily, closed only Dec 29–31 — confirmed open. ¥200 admission. Arriving via the early tram helps beat Sunday tour-bus crowds.</div><div class="field">~11:00am — Peace Park + National Peace Memorial Hall — free, 24hr, adjacent to the museum, within a 10min walk of each other. No need to rush either stop; the buffer for the rest of the day comes from the early departure, not from compressing this.</div>
+      <div class="field"><span class="field-label">Lodging</span>Noyado Nagasaki — BOOKED, confirmation RYa0n91ank (see Dec 19 arrival card for details)</div>
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Sun, Dec 20, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Lunch — Shikairo (birthplace of champon)</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=32.7364685,129.8697442&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Lunch%20%E2%80%94%20Shikairo%20(birthplace%20of%20champon)/@32.7364685,129.8697442,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~11:40am — Retrieve the car from TOP24 after the tram back from the museum, drive to the Glover Garden/Oura side of town (~10–15min), park at Matsugae Machi #2 lot (confirmed ¥300 first hour + ¥140/30min — trust this over an unverified ¥400/hr figure from another source).</div><div class="field">~12:15pm — Lunch hours 11:30am–2:30pm — confirmed (multiple sources). Sunday tour-bus crowds are a real risk since Shikairo sits right by the cruise terminal — the early morning start exists specifically to protect this window.</div><div class="field">The guaranteed win here regardless of any lunch queue: the free 2nd-floor champon museum and the 5th-floor harbor view. Treat the sit-down meal as a bonus, not the point — if the queue&#39;s too long, eat lighter/faster nearby instead.</div><div class="field">Unverified taste opinion, not fact: some sources suggest Kozanro&#39;s broth is more highly regarded than Shikairo&#39;s at this scale/volume. Shikairo&#39;s value here is the history and view, not necessarily the single best bowl in Nagasaki — go in with that expectation.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Sun, Dec 20, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Glover Garden &amp; Oura Cathedral</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=32.73361,129.86917&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Glover%20Garden%20%26%20Oura%20Cathedral/@32.73361,129.86917,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~1:15pm — Glover Garden: 8:00am–6:00pm, ¥620 admission — confirmed. Hillside open-air museum of Western merchant mansions, outdoor escalators up, harbor/shipyard view from the lookout balcony.</div><div class="field">Oura Cathedral: 8:30am–5:30pm (Nov–Feb), ¥1,000 incl. museum — confirmed. ~3min walk from Glover Garden, right next to its entrance — Japan&#39;s oldest standing Christian church.</div><div class="field">Same parking as the Shikairo lunch stop (Matsugae Machi #2 lot) — no need to move the car between lunch and here if parked centrally to both.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Sun, Dec 20, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Mount Inasa — sunset &amp; night view</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=32.7527,129.8495&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Mount%20Inasa%20%E2%80%94%20sunset%20%26%20night%20view/@32.7527,129.8495,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~4:15pm — Drive from the Glover Garden area via Route 202/Asahi Bridge, ~20min (reasonable estimate, not independently verified) to the mid-slope lot (~400 free spaces) — confirmed from earlier research this trip.</div><div class="field">The small summit-adjacent car park closes to regular vehicles on busy evenings/weekends — corroborated by two independent sources now. Don&#39;t try to drive all the way up on a Sunday.</div><div class="field">Slope Car monorail from the mid-slope lot: ¥600 one-way / ¥1,000 round-trip (corrected from an earlier ¥900 figure), 9:00am–10:00pm when running — but as of 2026-08-26, the Slope Car has been suspended since April 2026 for emergency electrical-system repairs; city&#39;s target is completion by end of Oct 2026, reopening not yet confirmed. A free shuttle bus on the same mid-slope-lot→summit route covered weekend/holiday gaps through summer 2026, but nothing published yet for December. Recheck inasayama.info/slopecar/ (official site) closer to travel — if neither is running, the only way up from the mid-slope lot is on foot, a real change to this evening&#39;s timing. Bypasses the main ropeway queue when running.</div><div class="field">Best viewing is ~30min after December sunset (~5:15pm) — arrive at the mid-slope lot with buffer before sunset so you catch the dusk-to-night transition, not just the already-dark view. One of Japan&#39;s officially designated &#39;new three great night views&#39; — the one genuinely unmissable slot in the day.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Sun, Dec 20, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Evening (optional) — light bites near Meganebashi</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=32.7486201,129.879922&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Evening%20(optional)%20%E2%80%94%20light%20bites%20near%20Meganebashi/@32.7486201,129.879922,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~7:00pm — Coming down from Mount Inasa after a fuller Shikairo lunch — no need to force a second big sit-down meal. No reservation, no timing pressure.</div><div class="field">Kakuni Manju (braised pork belly in a steamed bun) — Nagasaki&#39;s actual well-documented casual street snack, easy to find near Meganebashi/Hamanomachi. (A second AI&#39;s suggestion here was a vague, unconfirmed &#39;minced meat cutlet&#39; — this is the real, verifiable equivalent.)</div><div class="field">Car back to TOP24 overnight (¥500 max, 8pm–8am cutoff) — same pattern as every other night in Nagasaki.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Mon, Dec 21, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Nagasaki → Shimabara Port → Ocean Arrow Ferry</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=32.769,130.371&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Nagasaki%20%E2%86%92%20Shimabara%20Port%20%E2%86%92%20Ocean%20Arrow%20Ferry/@32.769,130.371,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~9:30am — Checkout Noyado Nagasaki (confirmed before 11:00am) and retrieve the car from TOP24パーキング魚の町.</div><div class="field">~10:00am — Drive to Shimabara Port via Route 57, ~1h (sources range 54min–1.5h — build in buffer per &#39;s stated preference).</div><div class="field">~11:00am — Ocean Arrow ferry — checked the operator&#39;s own live status page on 2026-08-24: &#39;通常運航&#39; (Normal Operations), fully recovered from the July 28 earthquake&#39;s brief disruption (1-day suspension, then vehicle-only for 2 days, fully normal since ~Aug 1). 30min crossing. Fare figures conflict across sources (¥1,000/adult one-way per one source vs. ¥1,500/pax + ¥3,500–4,500/car from an earlier search) — confirm actual fare at booking, don&#39;t trust either figure blindly.</div><div class="field">Arrive ~30–45min before departure, present vehicle registration to confirm the length bracket. Fallback if ferry status changes before December: direct Nagasaki Expressway → Kyushu Expressway via Tosu, ~165–200km, ~2h30m (this range is more consistent across sources than either this doc&#39;s earlier &#39;~3h&#39; estimate or a since-corrected &#39;2h15m&#39; claim — treat both those single numbers as imprecise).</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Mon, Dec 21, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Kumamoto Castle</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=32.806063,130.705972&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Kumamoto%20Castle/@32.806063,130.705972,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~2:00pm — Disembark Kumamoto Port, ~14min drive to Kumamoto Castle — confirmed.</div><div class="field">Park at Ninomaru Parking Lot (二の丸駐車場) — confirmed as the real, official castle parking area.</div><div class="field">Main keep open 9:00am–5:00pm (last entry 4:30pm), closed only Dec 29–Jan 3, ¥800 admission — confirmed. Reopened Aug 13, 2026 after brief post-earthquake safety checks.</div><div class="field">Many stone walls/outer sections remain under long-term restoration from the original 2016 earthquake (a project running to 2052) — expect scaffolding in places. Whether July 2026&#39;s quake added fresh damage beyond this wasn&#39;t independently confirmed — don&#39;t be alarmed by visible repair work, most of it predates this year.</div><div class="field">Target ~2:00pm arrival, ~2–2.5hrs at the castle — December sunset is ~5:15pm, plan to finish before dusk.</div><div class="field">~2:00pm (snack) — Mori Karashi Renkon, right inside Ninomaru itself (1-1-2 Ninomaru, 9:00am–7:00pm) — confirmed real, long-established maker of Kumamoto&#39;s signature deep-fried mustard lotus root. Also available at the nearby Josaien shopping area (23 shops) if this specific location is closed.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Mon, Dec 21, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Sotetsu Grand Fresa Kumamoto</div>
+      
+      <div class="field">~4:30pm — No on-site parking — nearest confirmed options (via the hotel&#39;s own official parking guide): Parking 24 (70m away), NPC24H Kumamoto Shimotori (¥1,000, 3:00pm–11:15am), Pursuit 24 Kumamoto Chuo (¥1,100, 2:00pm–11:00am). None take reservations.</div><div class="field">Confirmed operational post-earthquake with no structural damage — the hotel&#39;s own official notice mentions only a temporary linen-supply disruption (beds made, sheets not changed until supply stabilizes) as of Aug 2026. Worth a quick recheck closer to December that this has fully resolved.</div>
+      <div class="field"><span class="field-label">Lodging</span>Sotetsu Grand Fresa Kumamoto — BOOKED, 2-2-23 Shimotori, Chuo-ku, free cancel before 20 Dec.</div>
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Mon, Dec 21, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Dinner — Umazakura (basashi, Shimotori)</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=32.8000992,130.7082469&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Dinner%20%E2%80%94%20Umazakura%20(basashi%2C%20Shimotori)/@32.8000992,130.7082469,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~7:00pm — Basashi (horse sashimi) is Kumamoto&#39;s signature specialty — confirmed. Umazakura Kumamoto Shimotori Branch — confirmed real, &#39;Special Horse Sashimi Platter&#39; (6 cuts) recommended, central Shimotori, walking distance from the hotel.</div><div class="field">Alternative: Kenzo (Nanahikari Building B1F, 1-8-24 Shimotori) — also confirmed real, well-regarded, daily-curated selection.</div><div class="field">Backup if horse meat isn&#39;t to taste: Kokutei Kumamoto Ramen (since 1957, 5min walk from Shimotori Arcade) — confirmed real, thicker-noodle Kumamoto-style tonkotsu, distinct from the Hakata ramen already had in Fukuoka.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Tue, Dec 22, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Kumamoto → Takachiho</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=32.711445,131.30925&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Kumamoto%20%E2%86%92%20Takachiho/@32.711445,131.30925,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~8:00am — Checkout Sotetsu Grand Fresa Kumamoto (exact checkout time not yet confirmed against the booking voucher — verify before travel) and retrieve the car from whichever nearby coin lot it was parked in overnight (Parking 24 / NPC24H / Pursuit 24).</div><div class="field">~8:15am — Drive via E3/E77/445/218 — confirmed real route, ~80km, ~59min in normal traffic, mostly non-toll. Explicitly NOT the Aso mountain pass — that&#39;s the Dec 23 Takachiho→Kurokawa leg&#39;s caution zone, not this one.</div><div class="field">December is genuinely low-crowd season here — Gorge s easier to book than peak season, per earlier research this trip.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Tue, Dec 22, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Takachiho Gorge — rowboat</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=32.711445,131.30925&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Takachiho%20Gorge%20%E2%80%94%20rowboat/@32.711445,131.30925,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~9:30am — Winter boat hours 8:30am–5:00pm (last entry 4:30pm) — confirmed. Pin is approximate (town-center coordinates, no gorge-specific figure found) — close enough to navigate by, not exact.</div><div class="field">Reservation window opens exactly 2 weeks before the date at 9:00am JST, bookable from 2 weeks to 2 days ahead, online only (no phone reservations) — confirmed. This is the Dec 8, 9:00am JST slot already on the TickTick Travel list.</div><div class="field">Fee ¥4,100–5,100 per boat (not per person), boats seat up to 3 (4 with a small child), 30min duration — confirmed.</div><div class="field">Restrictions: operator must be junior-high age or older; no pets, no large luggage — confirmed.</div><div class="field">Closest parking to the boat dock: Oshioi Parking Lot (御塩井駐車場), right next to the boat reception — confirmed real. ¥1,000 (revised Aug 2025, not the older ¥500 figure some sources still show). Small lot, fills up — have a backup upper lot in mind if it&#39;s full.</div><div class="field">~10:00am–11:00am — Walk the free ~1km paved rim path (open at all hours, no reservation needed, ~40–60min unhurried) — confirmed real. Main observation deck sits directly above Manai Falls (17m waterfall, one of Japan&#39;s Top 100) with an unobstructed view of the boats below; some platforms extend out over the gorge for a straight-down ~80m view. Evening illumination exists mid-May–Nov only — not relevant for a December visit.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Tue, Dec 22, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Amano Iwato Shrine</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=32.7345037,131.3506899&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Amano%20Iwato%20Shrine/@32.7345037,131.3506899,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~11:15am — ~15min drive from the Gorge (~10km) — confirmed. Free admission to the shrine grounds.</div><div class="field">Guided tours of the sacred cave (the mythological hiding place of Amaterasu) run every 30min from 9:00am, with a lunch break at 12:30pm, then a final tour at 4:40pm — confirmed. Priest-led, includes a purification ceremony before viewing. Photography is explicitly prohibited at the viewing deck/cave itself — confirmed, treat it as strictly enforced, not a suggestion.</div><div class="field">Amano Yasukawara — confirmed real, ~10min walk along the river from the shrine. A cave where the gods are said to have gathered to plan luring Amaterasu out, now filled with thousands of small stacked stone towers left by pilgrims. Genuinely worth the extra walk, not a minor add-on — budget at least an hour total for shrine + Yasukawara combined.</div><div class="field">~12:30pm — Lunch: small soba shops right outside the shrine gates — look for Takachiho beef (a genuine award-winning local wagyu) and kappo-zake (sake warmed in a fresh bamboo tube, a real regional specialty) — both confirmed real, good way to eat local here rather than a specific named dish.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Tue, Dec 22, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Check-in — Solest Takachiho Hotel</div>
+      
+      <div class="field">~2:00pm — Check-in from 3:00pm — confirmed. Free on-site parking, accessible anytime (before check-in and after check-out too) — confirmed, genuinely simpler than every hotel so far on this trip, no coin-lot juggling needed here.</div>
+      <div class="field"><span class="field-label">Lodging</span>Solest Takachiho Hotel — BOOKED, 1261-1 Mitai, . Cancellation policy not stated on voucher — check Agoda.</div>
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Tue, Dec 22, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Afternoon — Takachiho Shrine (daytime) &amp; Gamadase Market</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=32.70667,131.30167&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Afternoon%20%E2%80%94%20Takachiho%20Shrine%20(daytime)%20%26%20Gamadase%20Market/@32.70667,131.30167,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~2:30pm — Takachiho Shrine, daytime — confirmed genuinely worth it on its own, not just a pass-through before the 8pm show: free admission, the sacred Meoto Sugi (paired 800-year-old cedar trees), ~20min walk + shrine grounds. Same location as the evening Kagura show, so no extra travel involved visiting twice.</div><div class="field">~3:30pm — Takachiho Gamadase Market (1099-1 Mitai) — confirmed real, local produce/souvenirs, mango-themed treats, a Takachiho beef restaurant on-site (Nagomi). Good casual browsing stop, close to the shrine/gorge cluster.</div><div class="field">This fills the afternoon gap between the 2:00pm check-in and the 6:30pm dinner — flagged as feeling bare before this was added.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Tue, Dec 22, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Dinner — Oh My God (Takachiho Shrine)</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=32.70667,131.30167&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Dinner%20%E2%80%94%20Oh%20My%20God%20(Takachiho%20Shrine)/@32.70667,131.30167,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~6:30pm — Oh My God, literally in front of Takachiho Shrine — confirmed real, Miyazaki specialties (Chicken Nanban, fried chicken), set meal or takeout. Extremely convenient timing-wise: right where you&#39;ll already be walking for the 8:00pm Kagura show.</div><div class="field">Alternative: Izakaya Kenchan, town center — confirmed real, kagura-mask decor, English-speaking owner, larger menu (sushi, tempura, bamboo sushi), counter/private-room/tatami seating.</div><div class="field">This fills a real gap: nothing was previously planned between the 2:00pm hotel check-in and the 8:00pm show.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Tue, Dec 22, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Evening — Yokagura night dance, Takachiho Shrine</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=32.70667,131.30167&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Evening%20%E2%80%94%20Yokagura%20night%20dance%2C%20Takachiho%20Shrine/@32.70667,131.30167,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~8:00pm — Every night of the year, 8:00pm–9:00pm, at Takachiho Shrine&#39;s Kagura Hall — confirmed. ¥1,000/adult (¥900 junior-high+/groups of 20+).</div><div class="field">Reserve online (200 seats) or same-day at the door (50 seats) — confirmed. December low season means same-day should be fine, but book ahead if you want certainty.</div><div class="field">Features 4 of the tradition&#39;s 33 sacred dances (Tajikarao, Uzume, Totori, Goshintai), reenacting the exact Amaterasu cave myth tied to Amano Iwato Shrine visited earlier the same day — a real narrative pairing, not a random add-on.</div><div class="field">Note: the full all-33-dance seasonal version only runs Saturday evenings (mid-Nov–mid-Feb) at various venues around town. Dec 22 is a Tuesday, so this shortened nightly version is what&#39;s actually available, not the full show.</div><div class="field">Solest Takachiho Hotel is genuinely walkable to Takachiho Shrine — confirmed, most-cited figure is ~3min (worst case ~9min/800m depending on source). No need to drive/re-park for the evening show.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Wed, Dec 23, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Takachiho → Aso</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=32.711445,131.30925&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Takachiho%20%E2%86%92%20Aso/@32.711445,131.30925,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~8:00am — Checkout Solest Takachiho — free on-site parking makes this easy, no rush. Drive via Route 218 west, then Route 325 north toward Minamiaso — confirmed real route.</div><div class="field">CAUTION: icy road surfaces possible Dec–Feb on this mountain corridor (not necessarily snow). Confirm the rental car has studless tires/chains, check conditions same-day at the hotel/ryokan desk directly (not just an app). Fallback if the Hi-Hi studless-tire booking falls through: lower-altitude route via Oita/Hita expressways instead of the high pass.</div><div class="field">Budget ~2–2.5h with stops, not the ~1h9m some route aggregators show for a direct nonstop drive — that number ignores Komezuka/Kusasenri/Daikanbo and the mountain road&#39;s real driving character.</div><div class="field">Mount Aso volcanic alert: Level 3 as of Aug 14, 2026, confirmed still active per an Aug 21 JMA update — 2km exclusion zone around Nakadake Crater, do not approach. This is an active, escalating situation (not a static closure) — recheck again closer to December more so than most other flags on this trip.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Wed, Dec 23, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Komezuka + Kusasenri + Aso Volcano Museum</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=32.88528,131.05194&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Komezuka%20%2B%20Kusasenri%20%2B%20Aso%20Volcano%20Museum/@32.88528,131.05194,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~9:30am — Komezuka — distinctive small volcanic cone (~50m), on the northern slopes of Nakadake, quick roadside photo stop directly on the driving path.</div><div class="field">~10:00am — Kusasenri — 1,100m grassland plateau, boardwalk, twin volcanic ponds. Parking ¥500 for 4-wheel vehicles — confirmed. Both Kusasenri and Komezuka sit outside the crater&#39;s 2km exclusion zone and remain accessible despite the Level 3 alert — confirmed.</div><div class="field">~11:00am — Aso Volcano Museum — confirmed open post-earthquake, ¥840 adult admission (a second AI claimed ¥1,300 — wrong, corrected here).</div><div class="field">Komezuka and Kusasenri actually sit close together on the inner caldera plateau near Nakadake — a second AI&#39;s claim that they&#39;re on &#39;opposite sides of the caldera&#39; from each other doesn&#39;t hold up. That description actually fits Daikanbo vs. this cluster, not Kusasenri vs. Komezuka.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Wed, Dec 23, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Daikanbo</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=32.99639,131.06722&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Daikanbo/@32.99639,131.06722,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~12:30pm — Northern outer caldera rim, 936m — the highest point of the Aso Northern Outer Ring Mountains, confirmed the single best viewpoint in the area.</div><div class="field">10min walk from parking to the observation platform. 360° panorama of all 5 Aso peaks (the &#39;sleeping Buddha&#39; silhouette), café/souvenir shop on site. Visited after the Komezuka/Kusasenri cluster since it&#39;s genuinely further north on the way to Kurokawa, not because it&#39;s on any &#39;opposite side&#39; as a second AI claimed.</div><div class="field">~12:30pm (optional stop) — Daikanbo Chaten (Aso Daikanbo Tea House), the on-site souvenir shop/café already mentioned above — confirmed real, known for Jersey-milk soft-serve ice cream and a local shochu named &#39;Daikanbo.&#39;</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Wed, Dec 23, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Aso Shrine (optional)</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=32.94778,131.115972&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Aso%20Shrine%20(optional)/@32.94778,131.115972,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~1:15pm (optional) — Still under long-term restoration from the 2016 earthquake (full completion not expected until 2030) — accessible to visitors. No confirmed status on any additional July 2026 quake damage specifically — worth a quick recheck closer to December.</div><div class="field">The Monzenmachi approach street has food stalls — look for Aso Akaushi (a real, distinct Aso red-beef brand, different from the black wagyu had elsewhere on this trip) as a lunch option.</div><div class="field">Optional — skip if the day already feels full. Nothing here is booked or time-sensitive.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Wed, Dec 23, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Check-in — Ryokan Sanga</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=33.0789827,131.1322643&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Check-in%20%E2%80%94%20Ryokan%20Sanga/@33.0789827,131.1322643,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~2:30pm — Parking is included on-site as part of the booking — no coin-lot logistics needed here, unlike every hotel so far on this trip.</div><div class="field">Real communal bath names for reference (beyond the private indoor onsen already in the booked room): Moyai no Yu (men&#39;s outdoor), Shiki no Yu (women&#39;s outdoor), Yakushi no Yu (guest-only indoor sulfur spring), Rokusoku Okeburo (private), Mihama no Yu (beauty-skin spring). A second AI&#39;s &#39;Yashiki no Yu&#39; isn&#39;t a real bath here — likely a garbled version of Yakushi no Yu.</div><div class="field">Hold off on the onsen-hopping tegata pass (visiting other ryokans&#39; baths) — save that for Dec 24, the actual full rest day, rather than cramming it into arrival evening before the included kaiseki dinner.</div><div class="field">Kaiseki dinner included in the booked rate.</div>
+      <div class="field"><span class="field-label">Lodging</span>Ryokan Sanga — BOOKED, check-in 3:00pm, Ego-no-ki room with private indoor onsen.</div>
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Thu, Dec 24, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Morning — Village walk (Kurokawa Onsen town)</div>
+      
+      <div class="field">~10:00am — Ryokan Sanga runs a confirmed real complimentary shuttle to the town center/bus stop, available until 9:00pm, and staff will take guests to visit other baths on request — no need to walk the ~2km or drive.</div><div class="field">Village is compact and walkable: ryokan/shops/cafes, a small shrine, bridges over the river to ryokan entrances — classically explored in yukata/geta (provided by Sanga).</div><div class="field">Patisserie Roku (麓) — confirmed real, famous cream puffs, sells out by afternoon — visit this early if wanted, not later in the day.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Thu, Dec 24, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Onsen-hopping — Tegata Pass</div>
+      
+      <div class="field">~11:00am — Nyuto Tegata pass, buy at the Kazenoya info center (or the visitor center, or any participating ryokan&#39;s front desk). Fee conflicts across sources: ¥1,300–1,500 (a real, unresolved discrepancy, not a single confirmed figure) — confirm at purchase. Grants entry to 3 baths of your choice from 28 participating ryokans, valid 6 months.</div><div class="field">Sanga&#39;s own bamboo-grove open-air bath is already included in your stay — no need to spend a tegata stamp there. Use all 3 stickers on other ryokans instead.</div><div class="field">Ikoi Ryokan — confirmed real: the Tachiyu (standing bath) has suspended bamboo poles to hold onto while floating upright in shoulder-deep water, genuinely distinctive. Also has Taki no Yu, a mixed-gender open-air bath beside a waterfall, selected as one of Japan&#39;s Top 100 Secret Hot Springs (not &#39;Top 10&#39; as claimed elsewhere — that specific ranking wasn&#39;t confirmed). Self-service onsen tamago (hot spring egg) sold in the courtyard.</div><div class="field">Yamamizuki — confirmed real, one of the best riverside baths in the area, ~25min walk from town center or shuttle bus (advance booking required). Outdoor bath sits in the woods right next to a mountain river.</div><div class="field">Hozantei — confirmed real, farthest from town (~3km into the wooded hills), another quiet riverside bath, rustic atmosphere. Optional 3rd stop if not just relaxing back at Sanga instead — this is a full rest day, no obligation to use all 3 stickers if slower pace is preferred.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Thu, Dec 24, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Lunch — Warokuya or Iromomiji</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=33.0772664,131.1415407&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Lunch%20%E2%80%94%20Warokuya%20or%20Iromomiji/@33.0772664,131.1415407,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~12:30pm — Warokuya, sister restaurant of Okyakuya Ryokan, by Marusuzubashi Bridge, housed in a relocated Meiji-era home — confirmed real. Signature dish: Tenka Ippin Akaushi Gozen, made with prized Aso akaushi beef.</div><div class="field">Alternative: Iromomiji — confirmed real, good soba, lunch-only, at the far end of town.</div><div class="field">Most Kurokawa restaurants close before evening — this is genuinely the meal window, not a scheduling quirk. Fine either way since kaiseki dinner is already included back at the ryokan.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Thu, Dec 24, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Evening — Yuakari Illumination &amp; Kaiseki, Ryokan Sanga</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=33.0789827,131.1322643&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Evening%20%E2%80%94%20Yuakari%20Illumination%20%26%20Kaiseki%2C%20Ryokan%20Sanga/@33.0789827,131.1322643,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~6:00pm — Kaiseki dinner at Sanga, included in the booked rate. Many kaiseki ryokans vary the menu on a second consecutive night — plausible here too, but the specific dishes (e.g. a claimed horse-meat sukiyaki) aren&#39;t independently confirmed, so don&#39;t expect a specific dish.</div><div class="field">~7:45pm–9:00pm — Yuakari Illumination: confirmed real, runs the full winter season (this year&#39;s run: Dec 20, 2025 – Mar 31, 2026; the following season would cover Dec 24, 2026 the same way) from sunset to 10:00pm, free. Hundreds of handcrafted bamboo lanterns — spherical temari lanterns and ~2m cylindrical lanterns — line the river, paths, and bridges through town. Genuinely worth the evening shuttle back into town rather than staying in for the night.</div><div class="field">Take Sanga&#39;s shuttle back to the ryokan by ~9:00pm (its confirmed cutoff) after the lantern walk.</div>
+      <div class="field"><span class="field-label">Lodging</span>Ryokan Sanga — BOOKED, night 2. Kaiseki dinner included in the rate.</div>
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Fri, Dec 25, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Ryokan Sanga checkout &amp; drive to Kirishima</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=33.0789827,131.1322643&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Ryokan%20Sanga%20checkout%20%26%20drive%20to%20Kirishima/@33.0789827,131.1322643,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~10:00am — Checkout Ryokan Sanga (11:00am official checkout, per the hotel&#39;s own confirmed cutoff).</div><div class="field">Route: R442 → R57 → Kumamoto IC → Kyushu Expressway south (via Yatsushiro, Hitoyoshi mountain corridor) → Yokogawa IC → R223 into the Kirishima volcanic zone — confirmed real route. ~185km. Drive time is genuinely unresolved across sources: one set of independent estimates gives ~2h58–59m, another gives ~2h30–45m — treat as a ~2h30m–3h range, not a single number, and budget on the higher end given the mountain corridor.</div><div class="field">Good news: this route does NOT re-cross Aso&#39;s high caldera pass — it&#39;s mostly Kyushu Expressway once down off the Kurokawa hills, so none of Dec 23&#39;s specific winter-driving caution zone repeats here. General mountain-driving care still applies through the Hitoyoshi tunnel corridor.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Fri, Dec 25, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Lunch — Miyahara Service Area</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=32.54325,130.68141&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Lunch%20%E2%80%94%20Miyahara%20Service%20Area/@32.54325,130.68141,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~12:00pm — Miyahara Service Area (southbound), Kyushu Expressway, Yatsushiro — confirmed real. Known for Kumamoto ramen, also has a steakhouse and a cake shop (Sally Garden chiffon cakes).</div><div class="field">Worth topping up fuel here as a precaution before the Kirishima mountain stretch, though the &#39;gas becomes sparse&#39; claim behind this specific tip wasn&#39;t independently confirmed.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Fri, Dec 25, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Check-in — Ryokojin Sanso</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=31.8186831,130.8365808&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Check-in%20%E2%80%94%20Ryokojin%20Sanso/@31.8186831,130.8365808,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~1:30pm — Estimated arrival given the ~2h30m–3h drive from a ~10am Sanga checkout — leaves a genuinely comfortable buffer before the hard 7:30pm dinner cutoff.</div><div class="field">Sits ~2km above Maruo Onsen, isolated on a forest plateau — confirmed real, quiet hillside setting with views across the valley toward Sakurajima.</div><div class="field">~6:30pm — Dinner included (breakfast + dinner in the booking). Satsuma-style regional cuisine is plausible here — kurobuta (Kagoshima black pork) and sweet potato are both genuine, famous local specialties — but the exact current menu isn&#39;t independently confirmed, so don&#39;t expect a specific dish.</div>
+      <div class="field"><span class="field-label">Lodging</span>Kirishima Onsen Ryokojin Sanso — BOOKED, ref 8UAGUQ9C. Check-in window 3:00pm–7:30pm — dinner requires arrival before 7:30pm (restaurant closes 9:00pm). Checkout 11:00am (Dec 27). Free self-parking confirmed.</div>
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Fri, Dec 25, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Private forest bath — Akamatsu no Yu</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=31.8186831,130.8365808&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Private%20forest%20bath%20%E2%80%94%20Akamatsu%20no%20Yu/@31.8186831,130.8365808,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~3:15pm — Claim a 45min slot at the front desk right at check-in — confirmed real, 4 free private outdoor forest baths on wooden walking paths, reportedly not pre-bookable online.</div><div class="field">Akamatsu no Yu (赤松の湯, &#39;Red Pine Bath&#39;) — corrected name; a second AI romanized the same kanji as &#39;Akane-no-yu,&#39; which is wrong. Alternative: Momiji no Yu (&#39;Maple Bath&#39;) — both confirmed real named baths on the property.</div><div class="field">Confirmed real and genuinely charming: there&#39;s an actual &#39;No deer in the hot spring!&#39; sign on the forest path, and wild Shika deer do visit the area, especially in the late afternoon — not an exaggeration.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Fri, Dec 25, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Optional — Kirishima Onsen Market / Maruo Falls</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=31.8186831,130.8365808&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Optional%20%E2%80%94%20Kirishima%20Onsen%20Market%20%2F%20Maruo%20Falls/@31.8186831,130.8365808,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~5:00pm (optional, if time/energy allow) — Kirishima Onsen Market, Maruo Onsen — confirmed real, local shops, snacks cooked over volcanic steam vents (eggs, corn, mochi), Kirishima tea/black vinegar/sweet potato shochu.</div><div class="field">Maruo Falls — confirmed real, short walk, genuinely distinctive since it&#39;s hot-spring-fed (soft steam rises off the water).</div><div class="field">Fully optional — the private forest bath is already the day&#39;s real highlight. Save the bigger hikes (Onamiike, Mt. Takachiho, Kirishima-jingū) for Dec 26&#39;s dedicated full day.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Sat, Dec 26, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Kirishima-jingū Shrine</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=31.858944,130.871861&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Kirishima-jing%C5%AB%20Shrine/@31.858944,130.871861,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~8:30am — Depart Ryokojin Sanso, drive via Route 223 (~13km, ~20min estimate, not independently pinned to the minute). Early departure genuinely worth it: Dec 26 is a Saturday, and this beats the weekend tour-bus crowds that build up by mid-morning.</div><div class="field">Free to enter, open 24hr — confirmed. Founded 6th century (original site between Mt. Takachiho-no-mine and the Ohachi crater), current buildings from 1715, National Treasure, vermilion-painted pillars and beams throughout.</div><div class="field">Sacred cedar tree, ~800 years old, ~38m tall, ~7m trunk circumference — confirmed real, said to be the ancestor of all cedars in southern Kyushu. It stands in FRONT of the shrine building (a second AI said &#39;behind the main hall&#39; — wrong, corrected here) — and the claimed &#39;branch shaped like a tiny praying priest&#39; isn&#39;t something I could verify anywhere, so treat that specific detail as unconfirmed embellishment, not fact.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Sat, Dec 26, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Maruo Falls</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=31.89324,130.83205&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Maruo%20Falls/@31.89324,130.83205,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~10:00am — Confirmed real and genuinely unusual: a 23m-tall, 16m-wide hot-spring waterfall, fed by 4 converging upstream onsens (Hayashida, Einoo, Iōdani, Myōban). Zero-walk roadside stop, parking/viewing platforms right there.</div><div class="field">Milky-blue to emerald-green basin from the sulfur content — confirmed. Visibly steams in winter cold, faint sulfur smell. A quick, easy stop, not a hike.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Sat, Dec 26, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Lunch — Kirishima Onsen Market</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=31.8186831,130.8365808&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Lunch%20%E2%80%94%20Kirishima%20Onsen%20Market/@31.8186831,130.8365808,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~11:00am — Confirmed real, local food stalls in Maruo Onsen. Satsuma-age (fried fish cakes), or snacks steamed directly over volcanic steam vents (onsen-mushi) — sweet potatoes, eggs, mochi, pork buns.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Sat, Dec 26, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Ebino Kogen — Rokkannon-miike crater lake loop</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=31.9333,130.85&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Ebino%20Kogen%20%E2%80%94%20Rokkannon-miike%20crater%20lake%20loop/@31.9333,130.85,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~12:15pm — Drive up to the plateau (~1,200m elevation — corrected from a second AI&#39;s impossible &#39;2,450m&#39; claim, which would be higher than every peak in the range). Park at the Ebino Eco Museum Center (address confirmed: 1495-5 Suenaga, Ebino City) — parking fee not independently confirmed, budget ~¥500 as a placeholder.</div><div class="field">~12:30pm–2:30pm — The easy 3-lake loop (Ikemeguri trail): Rokkannon-Mi-Ike, Byakushi-Ike, Fudo-Ike — confirmed real, ~2hrs, mostly flat and well-formed, one steep stretch near Mt. Shiratori. Rokkannon-Mi-Ike itself: cobalt-blue water, 14m deep, 500m wide — confirmed real.</div><div class="field">Live-conditions check needed, same pattern as Mount Aso: fumaroles in this area are known to cause trail/road closures — verify same-day before setting out, don&#39;t just trust a map.</div><div class="field">Layer up — the plateau is fully exposed, meaningfully colder and windier than down at the ryokan.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Sat, Dec 26, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Evening — Ryokojin Sanso baths &amp; dinner</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=31.8186831,130.8365808&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Evening%20%E2%80%94%20Ryokojin%20Sanso%20baths%20%26%20dinner/@31.8186831,130.8365808,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~3:00pm — Drive back down (~25min estimate). The property genuinely has 2 separate spring sources — confirmed: a cloudy-white simple sulfur spring and a clear simple thermal spring, split across the indoor and outdoor baths. The public indoor bath has a view toward Sakurajima. Worth trying both today, on top of yesterday&#39;s private forest bath.</div><div class="field">~6:30pm — Dinner included. Kagoshima kuroushi (black beef) is a genuine real regional specialty, but the exact current menu (a second AI&#39;s claim of tabletop-grilled beef specifically) isn&#39;t independently confirmed — don&#39;t expect a specific dish.</div><div class="field">A claimed &#39;panoramic star-watching deck&#39; wasn&#39;t confirmed anywhere in research — dropped rather than repeated as fact. General remoteness/low light pollution is plausible given the forest setting, just not a specific facility claim.</div>
+      <div class="field"><span class="field-label">Lodging</span>Kirishima Onsen Ryokojin Sanso — night 2, breakfast + dinner included in the booking.</div>
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Sun, Dec 27, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Kirishima → Sakurajima via Osumi Peninsula</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=31.8186831,130.8365808&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Kirishima%20%E2%86%92%20Sakurajima%20via%20Osumi%20Peninsula/@31.8186831,130.8365808,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~9:00am — Depart Kirishima. Drive via Route 220/224 along the Osumi Peninsula (Tarumizu side), ~56.9km, ~1h7m — locked in over driving into Kagoshima city first (see Decisions in the doc for the full reasoning: keeps the Kagoshima city night, skips one of the two ferry crossings).</div><div class="field">Approaches Sakurajima via the 1914 Taisho-eruption lava land bridge — confirmed real historical event (ash rose to 18,000m, the eruption physically connected Sakurajima to the Osumi Peninsula). No ferry needed on the way in — only one crossing all day, at the end, from Sakurajima itself.</div><div class="field">IMPORTANT, checked fresh this pass: Sakurajima is currently in active eruption, JMA Alert Level 3 as of August 2026 (ash plumes to 2.2km, ballistic rocks to 600m from the crater, ongoing pyroclastic flow monitoring) — same situation as Mount Aso earlier in the trip. Good news: entry is only restricted within 2km of the Minamidake/Showa craters — all the stops already planned below (observatories, lava trails, footbath) are confirmed to remain fully accessible under this alert level. Still, recheck again closer to December given it&#39;s an active, evolving situation.</div><div class="field">Ash safety, confirmed real hazard (not just caution for its own sake): a 1985 event dropped 4-5cm lapilli 5km from the crater, damaging 43 cars; Kagoshima schoolchildren wear helmets as routine daily practice. If ash has settled on the windshield when driving, don&#39;t run dry wipers over it — the sharp volcanic particles can scratch the glass. Rinse with water first. A specific claim about roadside concrete fallout shelters along Route 224 couldn&#39;t be verified and isn&#39;t repeated here as fact.</div><div class="field">EXPLICIT FALLBACK FRAMING (added 2026-08-25): don&#39;t treat this as &#39;Sakurajima sightseeing with an alert caveat&#39; — treat it as a real fork: Sakurajima if conditions permit on the day; otherwise, skip the island loop entirely and drive the direct route into Kagoshima city instead, arriving early. This is a genuinely different day if invoked, not a minor tweak. The Kagoshima-city alternative itself isn&#39;t researched yet — deliberately, since it&#39;s a contingency, not the primary plan. If this fallback is ever actually needed, that&#39;s the trigger to do a fresh research pass on Kagoshima city sights (e.g. Sengan-en Garden, Kagoshima City Aquarium), not to assume anything about them now.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Sun, Dec 27, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Sakurajima loop — Torii, Lava Observatory, Nagisa Trail</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=31.55432,130.67765&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Sakurajima%20loop%20%E2%80%94%20Torii%2C%20Lava%20Observatory%2C%20Nagisa%20Trail/@31.55432,130.67765,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~10:15am — Kurokami Buried Torii — confirmed real, right by the land-bridge entry point (near-zero detour). Originally a 3m torii gate at Haragosha Shrine, buried by the 1914 eruption, only ~1m of the top crossbeam still visible — a genuinely striking, sobering sight. Designated a Kagoshima Prefecture natural monument.</div><div class="field">~10:45am — Arimura Lava Observatory — confirmed real, ~16min drive, south side, the quieter alternative to the main decks. A 1km walking trail with 3 branching paths (450m/~10min, 700m/~15min, 800m/~20min), each a different angle over the lava fields and the peak. View is toward Showa Crater — note this is a distinct crater on Minamidake&#39;s eastern flank (formed 1939), not the same thing as Minamidake itself; Showa Crater has been the main active vent since 2006, which is why it&#39;s the source of most recent eruptions.</div><div class="field">Continue around the island&#39;s west side to Sakurajima Port (north side) — confirmed real route logic, traces roughly the southern half of the island&#39;s ~50km coastal loop in one direction, no backtracking, ends exactly at the ferry.</div><div class="field">~12:30pm — Nagisa Lava Trail + footbath, right by the terminal before boarding — confirmed real, lava flow from the same 1914 eruption, ~3km of walking trails along the water. The footbath itself: confirmed 100m long, one of the longest in Japan, terra-cotta/iron-colored water from a hot spring 1,000m underground, free. Bring a small towel to dry your feet.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Sun, Dec 27, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Ferry Sakurajima → Kagoshima</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=31.5925,130.6567&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Ferry%20Sakurajima%20%E2%86%92%20Kagoshima/@31.5925,130.6567,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~1:00pm — Only ferry crossing needed all day — confirmed. ~15min crossing, ¥250/adult one-way (round trip ¥500) confirmed fresh this pass — matches the earlier figure exactly. Car fare ¥1,700–2,350 depending on length (paid at the Sakurajima-side toll booth), not independently re-confirmed this pass but unchanged from earlier research.</div><div class="field">Operates 4:00am–11:30pm daily, departures every 15–20min in the daytime — confirmed fresh this pass, including the &#39;no longer 24/7 as of Oct 1, 2025&#39; detail, which checks out exactly.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Sun, Dec 27, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Check-in — JR Kyushu Hotel Kagoshima</div>
+      
+      <div class="field">~1:30pm — No dedicated hotel parking — confirmed real: guests are directed to the Amu Plaza Kagoshima Multi-storey Parking Lot. Confirmed rate: ~¥1,000/night self-parking. The validation process has changed — Amu Plaza now uses license-plate recognition, not the older &#39;present your ticket at the front desk for a stamp&#39; process (a second AI described the old method) — worth confirming the current process at check-in since policies can shift again.</div>
+      <div class="field"><span class="field-label">Lodging</span>JR Kyushu Hotel Kagoshima — BOOKED, 1-1-2 Take, Takeoka, /2043660181, Dec 27–28. Directly connected to JR Kagoshima-Chuo Station, 1min walk from the ticket gates.</div>
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Sun, Dec 27, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Dinner — Kagomma Furusato Yataimura</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=31.5826728,130.5436765&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Dinner%20%E2%80%94%20Kagomma%20Furusato%20Yataimura/@31.5826728,130.5436765,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~6:30pm — 6-4 Chuo-cho, ~5min walk from Kagoshima Chuo Station (and the hotel) — confirmed real, 25 food stalls, opened 2012. Hours 12:00pm–2:00pm and 5:00pm–12:00am (varies by stall), 2 full-closure days/month — worth a quick check closer to the date.</div><div class="field">Kagoshima specialties on offer: kuroushi beef, kurobuta pork, kuro satsuma chicken, kanpachi yellowtail, kibinago herring — confirmed real.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Mon, Dec 28, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Checkout &amp; drive to Fukuoka</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=31.5966,130.5571&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Checkout%20%26%20drive%20to%20Fukuoka/@31.5966,130.5571,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~9:00am — Checkout JR Kyushu Hotel Kagoshima (exact checkout time not yet confirmed — verify before travel).</div><div class="field">Drive Kyushu Expressway direct, ~283km, ~3h21m — confirmed fresh this pass, matches the existing figure exactly. Toll ~¥7,500 standard / ~¥5,250 with ETC discount — confirmed.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Mon, Dec 28, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Lunch — Nankin Senryo, Kurume</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=33.3025,130.53139&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Lunch%20%E2%80%94%20Nankin%20Senryo%2C%20Kurume/@33.3025,130.53139,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~12:30pm — Confirmed real, the actual birthplace of tonkotsu ramen (opened 1937 on Meiji-Dori). Address 1357-15 Nonaka-Machi, Kurume, hours 11:30am–10:00pm — confirmed. Distinctive wrinkled house-made noodles, unusual even among other Kurume ramen shops. Coordinates approximate (same Nonakamachi area, exact building not pinned down).</div><div class="field">Alternative if not wanting to detour into Kurume city: Hirokawa Service Area — confirmed real, has both UP (toward Fukuoka/Moji) and DOWN (toward Kagoshima) sections; the UP side sits between Yame IC and Kurume IC, right on this route, resolving the earlier &#39;not fully pinned down which section&#39; uncertainty.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Mon, Dec 28, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Check-in — Hotel Reference Tenjin III</div>
+      
+      <div class="field">~4:30pm — On-site paid parking confirmed real (uncovered lot, extra charge, card only — no cash accepted). Resolves the earlier TODO for this hotel.</div>
+      <div class="field"><span class="field-label">Lodging</span>Hotel Reference Tenjin III — BOOKED, 3-8-10 Tenjin, Chuo Ward, confirmation 22315092353406, booking no. 1578949356302016. 8min walk from Tenjin Station.</div>
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Mon, Dec 28, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Evening — last yatai dinner (optional)</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=33.5838934,130.4051825&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Evening%20%E2%80%94%20last%20yatai%20dinner%20(optional)/@33.5838934,130.4051825,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~6:30pm — Watanabe-dori yatai is genuinely walkable from here too (one source describes &#39;excellent access&#39; to both Watanabe-dori and Nakasu yatai from this hotel), though the exact walk time isn&#39;t pinned down — this is no longer the Day 1 hotel that sat directly on that street, so don&#39;t assume the same 2min walk.</div><div class="field">Fully optional — Day 1 already covered yatai at Watanabe-dori. Repeating it is fine (known good), but this is also genuinely the last dinner of the trip, so a proper sit-down restaurant is equally reasonable if preferred over a repeat. Nakasu Yatai remains not recommended, per Day 1&#39;s reasoning (touristy, cramped, overpriced).</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Tue, Dec 29, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Checkout, drive to airport &amp; rental car return</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=33.5904,130.4017&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Checkout%2C%20drive%20to%20airport%20%26%20rental%20car%20return/@33.5904,130.4017,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~8:00am — Checkout Hotel Reference Tenjin III. Leaving earlier than standard checkout to make the car-return window — exact hotel checkout policy not confirmed, worth double-checking.</div><div class="field">~8:15am — Drive to Fukuoka Airport International Terminal, ~20–25min (already established in this doc&#39;s Decisions section — Tenjin is a longer morning drive than the earlier-considered Futsukaichi Onsen would have been).</div><div class="field">9:00am — Rental car return, Fukuoka Airport International Terminal — same terminal as the TG649 departure, so no separate airport transfer needed. Keeping the car overnight rather than returning it the evening before was a deliberate choice specifically to avoid this.</div>
+      
+      
+    </div>
+<div class="card">
+      <div class="date-display"><div class="date-weekday">Tue, Dec 29, 2026</div></div>
+      <div class="field"><span class="field-label">Location</span>Check-in, security &amp; departure</div>
+      <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=33.5904,130.4017&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Check-in%2C%20security%20%26%20departure/@33.5904,130.4017,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+      <div class="field">~9:15am — Check-in/bag drop, genuinely comfortable buffer (~2h25m) before boarding given the 9am car return already puts you at the terminal.</div><div class="field">Automated facial-recognition immigration gates — confirmed real, integrated kiosks handle immigration + customs together, a genuine time-saver.</div><div class="field">Last-minute souvenirs if not already bought: Fukusaya Castella (confirmed real, already verified earlier this trip), Hakata Torimon (confirmed real — Meigetsudo brand, Monde Selection Gold Award 20+ consecutive years, sold throughout Hakata Station), Ichiran boxed ramen (well-known real product).</div><div class="field">~11:00am — Boarding, TG649 via Bangkok. Departs 11:40am.</div>
+      
+      
+    </div></section>
+  <section><h2>Contacts</h2><div class="contact-grid"><div class="card contact-card">
+    <div class="field-label">Ryokan Sanga (Kurokawa, Dec 23–25)</div>
+    <div class="field">+81 967 44 0906 · sanga-ryokan.com/en</div>
+  </div><div class="card contact-card">
+    <div class="field-label">Ryokojin Sanso (Kirishima, Dec 25–27)</div>
+    <div class="field">+81 995 78 2831 · ryokojin.com</div>
+  </div><div class="card contact-card">
+    <div class="field-label">Hi-Hi Car Rental (Fukuoka Airport)</div>
+    <div class="field">CAR STYLE JAPAN Co., Ltd. — LINE (contacted 22 Aug 2026, awaiting reply re: studless tires) · phone +81 92 409 2276</div>
+  </div><div class="card contact-card">
+    <div class="field-label">JAF (Japan Automobile Federation)</div>
+    <div class="field">Emergency roadside assistance — fallback if no studless-tire rental found · Road Service Call 0570-00-8139 (or #8139 from mobile)</div>
+  </div><div class="card contact-card">
+    <div class="field-label">Noyado Nagasaki (Dec 19–21)</div>
+    <div class="field">Trip.com confirmation RYa0n91ank, · Booking No. 1578949356024489 · +81-95-893-5234 · message via Trip.com app (internet only, no SIM needed)</div>
+  </div><div class="card contact-card">
+    <div class="field-label">Sotetsu Grand Fresa Kumamoto (Dec 21–22)</div>
+    <div class="field">Agoda · +81 96 353 0203 · message via Agoda app (internet only, no SIM needed)</div>
+  </div><div class="card contact-card">
+    <div class="field-label">Solest Takachiho Hotel (Dec 22–23)</div>
+    <div class="field">Agoda · +81 982 83 0001 · message via Agoda app (internet only, no SIM needed)</div>
+  </div><div class="card contact-card">
+    <div class="field-label">JR Kyushu Hotel Kagoshima (Dec 27–28)</div>
+    <div class="field">Agoda , ref 19570901 · +81 99 213 8000 · message via Agoda app (internet only, no SIM needed)</div>
+  </div><div class="card contact-card">
+    <div class="field-label">Hotel Reference Tenjin III (Dec 28–29)</div>
+    <div class="field">Trip.com confirmation 22315092353406, · Booking No. 1578949356302016 · +81-92-718-3030 · message via Trip.com app (internet only, no SIM needed)</div>
+  </div><div class="card contact-card">
+    <div class="field-label">Thai Airways (flights, )</div>
+    <div class="field">Japan contact center +81 50-1720-2692 (Japanese-language global line, replaced old 0570 number Aug 2025) · Manage My Booking at thaiairways.com — most reliable option given the 55-min Bangkok return connection</div>
+  </div><div class="card contact-card">
+    <div class="field-label">Ocean Arrow Ferry (Shimabara→Kumamoto, Dec 21)</div>
+    <div class="field">Reservation center 0957-63-8008 (8:30am–5:50pm) · kumamotoferry.co.jp</div>
+  </div><div class="card contact-card">
+    <div class="field-label">Hotel Monte Hermana Fukuoka (Dec 18–19)</div>
+    <div class="field">(Agoda) · +81 92 735 7111</div>
+  </div></div></section>
+  <section><h2>Language</h2><div class="contact-grid"><div class="card contact-card">
+    <div class="field-label">Order one of something on the menu</div>
+    <div class="field">Kore wo hitotsu kudasai.</div>
+    <div class="field"><span class="field-label">Romaji</span>Koh-reh woh hee-tot-soo koo-dah-sigh</div>
+    <div class="field"><span class="field-label">Notes</span>Kore = this, wo = object marker, hitotsu = one item, kudasai = please give me. Swap hitotsu for futatsu (2), mittsu (3), yottsu (4). Point at the item while saying it.</div>
+  </div><div class="card contact-card">
+    <div class="field-label">Thank you</div>
+    <div class="field">Arigatou gozaimasu.</div>
+    <div class="field"><span class="field-label">Romaji</span>Ah-ree-gah-toh goh-zai-mahs</div>
+    
+  </div><div class="card contact-card">
+    <div class="field-label">Excuse me / sorry (getting attention, squeezing past)</div>
+    <div class="field">Sumimasen.</div>
+    <div class="field"><span class="field-label">Romaji</span>Soo-mee-mah-sen</div>
+    <div class="field"><span class="field-label">Notes</span>The single most useful word for getting a server&#39;s attention at a yatai stall or counter.</div>
+  </div><div class="card contact-card">
+    <div class="field-label">Ask for an English menu</div>
+    <div class="field">Eigo no menyuu wa arimasu ka?</div>
+    <div class="field"><span class="field-label">Romaji</span>Ay-goh no meh-nyoo wah ah-ree-mahs kah</div>
+    <div class="field"><span class="field-label">Notes</span>Most modern Watanabe-dori stalls have one — worth asking before pointing and guessing.</div>
+  </div><div class="card contact-card">
+    <div class="field-label">Ask for no pork</div>
+    <div class="field">Buta niku nashi de onegaishimasu.</div>
+    <div class="field"><span class="field-label">Romaji</span>Boo-tah nee-koo nah-shee deh oh-neh-guy-shee-mahs</div>
+    <div class="field"><span class="field-label">Notes</span>Useful given how much of Kyushu food leans on tonkotsu/pork — buta niku = pork.</div>
+  </div><div class="card contact-card">
+    <div class="field-label">Ask if something contains alcohol</div>
+    <div class="field">Kore wa osake ga haitte imasu ka?</div>
+    <div class="field"><span class="field-label">Romaji</span>Koh-reh wah oh-sah-keh gah high-teh ee-mahs kah</div>
+    <div class="field"><span class="field-label">Notes</span>Relevant for kappo-zake (bamboo-warmed sake) and dishes cooked with mirin/sake.</div>
+  </div><div class="card contact-card">
+    <div class="field-label">Ask for the bill</div>
+    <div class="field">Okaikei onegaishimasu.</div>
+    <div class="field"><span class="field-label">Romaji</span>Oh-kai-kay oh-neh-guy-shee-mahs</div>
+    
+  </div><div class="card contact-card">
+    <div class="field-label">Ask where the bathroom is</div>
+    <div class="field">Toire wa doko desu ka?</div>
+    <div class="field"><span class="field-label">Romaji</span>Toy-reh wah doh-koh dess kah</div>
+    
+  </div><div class="card contact-card">
+    <div class="field-label">Cheers (drinking)</div>
+    <div class="field">Kanpai!</div>
+    <div class="field"><span class="field-label">Romaji</span>Kahn-pie</div>
+    
+  </div><div class="card contact-card">
+    <div class="field-label">Compliment the food</div>
+    <div class="field">Oishii!</div>
+    <div class="field"><span class="field-label">Romaji</span>Oy-shee</div>
+    <div class="field"><span class="field-label">Notes</span>Genuinely appreciated when said to the chef/staff directly.</div>
+  </div></div></section>
+  <section><h2>Extras</h2><div class="card">
+    <div class="field">Cancel Hankasou Seseragi — DONE</div>
+    <div class="field"><span class="field-label">Notes</span>Duplicate Kirishima booking, dropped in favor of Ryokojin Sanso. Cancelled — confirmed done as of 2026-08-22. Property was cash-only for on-site charges (moot now).</div>
+  </div></section>
+  <section><h2>Bookings</h2><section><h2>✈ Flights</h2><div class="card">
+    <div class="field"><span class="field-label">Thu, Dec 17, 2026 · TG410</span>SIN (Changi T2) → BKK (Suvarnabhumi)</div>
+    <div class="field">9:00pm → 10:20pm</div>
+    <div class="field"><span class="field-label">Notes</span>A350-900, fare class K (STANDARD), 1 checked bag/pax. Layover BKK 2h40m before TG648.</div>
+  </div><div class="card">
+    <div class="field"><span class="field-label">Fri, Dec 18, 2026 · TG648</span>BKK (Suvarnabhumi) → FUK (Terminal I)</div>
+    <div class="field">1:00am → 8:10am</div>
+    <div class="field"><span class="field-label">Notes</span>A330-300. Lands Fukuoka morning of 18 Dec, not evening of 17 Dec. Outbound baggage allowance is 1 checked bag/pax (fare class K) — lower than the 2 PCS/pax on the return legs. If carrying a battery-integrated (&quot;smart luggage&quot;) suitcase, the batteries must be removed at check-in and carried in the cabin, not left in the checked bag.</div>
+  </div><div class="card">
+    <div class="field"><span class="field-label">Tue, Dec 29, 2026 · TG649</span>FUK → BKK (Suvarnabhumi)</div>
+    <div class="field">11:40am → 3:40pm</div>
+    <div class="field"><span class="field-label">Notes</span>A330-300, fare class Q (FLEXI). Layover BKK only 55 min — tightest connection of the trip, same PNR/terminal. Return baggage allowance is 2 PCS/pax (vs. 1 PC/pax outbound) — more room coming home for souvenirs/gifts.</div>
+  </div><div class="card">
+    <div class="field"><span class="field-label">Tue, Dec 29, 2026 · TG409</span>BKK (Suvarnabhumi) → SIN (Changi T2)</div>
+    <div class="field">4:35pm → 7:55pm</div>
+    <div class="field"><span class="field-label">Notes</span>A350-900. Total SGD 2,766 for 2 adults. Passengers: MR (ticket 217 2349971431), LEE WEI YI MISS (ticket 217 2349971430) — verify names match passports. Endorsement reads NON END/FLT/DTE CHANGE — confirm actual flexibility before relying on the FLEXI label.</div>
+  </div></section>
+  <section><h2>🏨 Accommodations</h2><div class="card">
+    <div class="field"><span class="field-label">Fri, Dec 18, 2026 → Sat, Dec 19, 2026</span>Hotel Monte Hermana Fukuoka (Watanabedori, Tenjin)</div>
+    <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=33.5858269,130.404844&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Hotel%20Monte%20Hermana%20Fukuoka%20(Watanabedori%2C%20Tenjin)/@33.5858269,130.404844,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+    <div class="field"><span class="field-label">Notes</span>Corner Room with Queen Bed, Non-Smoking, Room Only (no breakfast). JPY 16,468 (17% promo discount applied), card charged 13 Dec 2026 (pay-later). Free cancellation until 15 Dec 2026; cancelling within 3 days of arrival or no-show charges 100% of booking value. Parking on-site ¥1,500/night, first-come-first-served (no reservation possible) — confirmed dense 24hr coin-parking backup within a few hundred meters. 4-star, Bordeaux-vineyard-themed boutique design (chain-scale, not an independent guesthouse). On Watanabe-dori itself: yatai at the doorstep, ~5–10min walk to Taiho Ramen, ~15min walk to Tenjin core, ~5min drive to Ohori Park, ~10min bus to Hakata Station (not walkable).</div>
+  </div><div class="card">
+    <div class="field"><span class="field-label">Sat, Dec 19, 2026 → Mon, Dec 21, 2026</span>Noyado Nagasaki (Uonomachi, Nagasaki City)</div>
+    <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=32.7486201,129.879922&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Noyado%20Nagasaki%20(Uonomachi%2C%20Nagasaki%20City)/@32.7486201,129.879922,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+    <div class="field"><span class="field-label">Notes</span>BOOKED, CONFIRMED. Japanese-Style Room, private bathroom, up to 2 adults, no meals included. SGD 265.32 total (incl. VAT SGD 24.12), prepaid. Accommodation tax charged separately at the property based on guest count. Check-in after 3:00pm, check-out before 11:00am. Cancellation: free before 11:59pm Dec 4; SGD 53.06 fee before 11:59pm Dec 17; SGD 132.66 fee before 11:59pm Dec 18; non-refundable after 11:59pm Dec 18. 1min walk from Meganebashi. No on-site parking (confirmed) — TOP24 Parking Uonomachi (24hr, overnight max ¥500) and other nearby coin lots are the fix. 9.4 &quot;Amazing&quot; rating.</div>
+  </div><div class="card">
+    <div class="field"><span class="field-label">Wed, Dec 23, 2026 → Fri, Dec 25, 2026</span>Ryokan Sanga (Kurokawa Onsen, Minamioguni, Kumamoto)</div>
+    <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=33.0789827,131.1322643&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Ryokan%20Sanga%20(Kurokawa%20Onsen%2C%20Minamioguni%2C%20Kumamoto)/@33.0789827,131.1322643,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+    <div class="field"><span class="field-label">Notes</span>Ego-no-ki Japanese Style Room, 8+6 tatami, private indoor onsen, 23.2sqm, max 2 adults. SGD 1,552.22 total (room 1,547.42 + ¥600 bathing tax paid on-site). Card charged 19 Dec 2026 (pay-later). Breakfast + kaiseki dinner, hot spring access, parking, yukata, WiFi included. NOT the unrelated Kyoto property of the same name.</div>
+  </div><div class="card">
+    <div class="field"><span class="field-label">Fri, Dec 25, 2026 → Sun, Dec 27, 2026</span>Kirishima Onsen Ryokojin Sanso (Maruo Onsen, Kirishima)</div>
+    <div class="card-links">
+    <a class="nav-link" href="https://waze.com/ul?ll=31.8186831,130.8365808&amp;navigate=no" target="_blank" rel="noopener">View in Waze →</a>
+    <a class="nav-link" href="https://www.google.com/maps/search/Kirishima%20Onsen%20Ryokojin%20Sanso%20(Maruo%20Onsen%2C%20Kirishima)/@31.8186831,130.8365808,17z" target="_blank" rel="noopener">View in Google Maps →</a>
+  </div>
+    <div class="field"><span class="field-label">Notes</span>Japanese room, nonsmoking, standard, 2 adults. JPY 81,280, charged in SGD ~20 Dec 2026 (approx SGD 620). Breakfast + dinner included. Free cancellation before 22 Dec 2026; 30% within 3 days of arrival; 100% within 2 days or no-show. Map pin is approximate (nearest resolvable landmark, Kirishima Jingu Station) - the exact ryokan isn&#39;t in the map database.</div>
+  </div></section>
+  <section><h2>🚗 Car Rental</h2><div class="card">
+    <div class="field"><span class="field-label">[TBD — Hi-Hi Car Rental pending reply, contacted via LINE 22 Aug 2026]</span>Fri, Dec 18, 2026 → Tue, Dec 29, 2026</div>
+    <div class="field">Fukuoka Airport (International Terminal) → Fukuoka Airport (International Terminal)</div>
+    <div class="field"><span class="field-label">Notes</span>Hard requirement: studless (winter) tires, for the Dec 23 Takachiho→Kurokawa leg via the icy Aso caldera. Ruled out (no studless availability): ORIX, Times Car Rental, Sky Rent-a-Car, Toyota Rent a Car (national site). Kyushu-wide seasonal shortage, not specific to us. Untried lead: Toyota Rent-a-Lease Fukuoka (regional site, distinct from the national one) — Kumamoto branch confirmed studless stock. Fallback: snow chains + JAF emergency assistance + daytime-only driving for the Dec 23 leg + check Aso Panorama Line road-condition camera same-day.</div>
+  </div></section></section>
+
+  <footer>Generated 2026-08-27 from the live trip dashboard — static, read-only snapshot.</footer>
+</div>
+</body>
+</html>

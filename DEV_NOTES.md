@@ -834,6 +834,69 @@ since that card was already built as an HTML template string inside
   cheers, compliment) written directly via Firebase REST, not just left
   as an empty tab — same "real starter items, not placeholders" precedent
   as History #11's packing lists.
+- **Public share snapshot (added 2026-08-27).** `scripts/build-public.mjs`
+  generates a read-only, sanitized, fully static page — safe to hand to
+  friends/family. Run manually (`node scripts/build-public.mjs <tripId>`,
+  or with no argument to rebuild every trip in `trips.json`) — **never
+  automatic**, so an in-progress edit never gets published before it's
+  ready. Deliberately *not* the live app in a read-only mode: the DB rules
+  are open read/write per trip (see Known limitations below), so a page
+  that still talks to the live DB — even with editing hidden in the UI —
+  would let anyone curious enough to open devtools find the DB URL and
+  edit the real trip. Instead the script fetches the trip's current
+  Firebase data once, redacts it, and bakes the result straight into
+  static HTML with no Firebase SDK, no `contenteditable`, no writes at
+  all.
+  **URL structure — revised after the user caught a real hole in the
+  first version.** The first version wrote to `<tripId>/public/`, nested
+  under the trip's own live folder — trivially reversible: strip
+  `/public` from the URL and you're on the live, fully-editable dashboard
+  for that same trip. Fixed by writing to a **top-level, random 12-char
+  slug** instead (`<repo root>/<slug>/index.html`, e.g.
+  `qloof.github.io/trip-dashboard/t4t87omfyumj/` — the user's own
+  suggested format), generated via `crypto.randomBytes`, with **zero
+  derivable relationship to `tripId`** — seeing the public URL gives no
+  path back to the private one. Each regeneration retires the previous
+  slug (deletes that folder outright, so the old link actually 404s, not
+  just goes unlinked) and mints a fresh one; the current slug per trip is
+  tracked in `share-slugs.json` at the repo root so the script knows what
+  to clean up next time. Verified: regenerating Kyushu's page correctly
+  deleted the old slug folder and produced a new one, confirmed via `ls`.
+  **Known residual gap, explicitly out of scope for this feature:** the
+  site's own landing page (`index.html`) already lists every trip by name
+  with a link to its live editable page — a pre-existing, already-accepted
+  trade-off (see Known limitations), not something this feature
+  introduced or was asked to fix. Someone who browses to the bare
+  `qloof.github.io/trip-dashboard/` root still finds the real trips
+  regardless of where public snapshots live. This fix closes the specific
+  "one URL-edit away" hole the nested path created; it's obscurity for the
+  public link itself, not access control, and doesn't claim to be more.
+  Redaction, decided with the user: strips `budget`/`budgetCurrency`
+  entirely, strips `checklists` entirely (also sidesteps the hardcoded
+  "Packing · Longfen"/"Packing · Gwen" tier labels baked into the live
+  template — those never had to become a data-driven redaction problem),
+  drops every `confirmation`/`pdfUrl`/`pdfUrl2` field outright (booking
+  refs, PINs, e-ticket/voucher links — `pdfUrl` filenames like
+  `eticket-longfen.pdf` were an actual name leak, not just theoretical),
+  and recursively scrubs every remaining string for the two travelers'
+  name tokens and for booking-ID/PIN/PNR/Agoda-ref patterns embedded in
+  free text (`contacts.ref` mixes a booking ID with the phone number and
+  website in one string — regex removes just the ID span, e.g. "Booking
+  ID 2043279062 · +81 967 44 0906 · site.com" → "+81 967 44 0906 ·
+  site.com" — then cleans up the orphaned separator). **Contacts (name +
+  phone/website) are kept, not stripped** — the user explicitly clarified
+  those are establishment contacts (hotels, ferry operator, JAF), not
+  traveler personal info, a distinction easy to miss since the field is
+  literally named "Contacts." Itinerary, Language, Extras, and Bookings
+  (flight numbers/times/routes, hotel names/dates, car rental company/
+  dates) are kept — the actual point of sharing a trip. Per-card Google
+  Maps/Waze links are regenerated in the static page using the same
+  location-anchored URL scheme as the live app. Verified end-to-end
+  against real Kyushu data: `node --check` passed, then grepped the
+  generated output for the travelers' names, both accommodations'
+  booking IDs, the flight PNR, and "budget"/"packing" — all clean except
+  the intentional one-line banner explaining what was left out. Not yet
+  committed/pushed or opened in a real browser — see Still Open.
 
 ## Known limitations (already communicated to the user — don't "fix" silently)
 
@@ -1426,3 +1489,9 @@ Keep this section scoped to real engineering/testing debt only.
   control. Consistent with the existing "anyone with the link" trust
   model (see Known limitations), just making the link easier to hand
   someone.
+- **Public share snapshot not yet opened in a real browser** (see Feature
+  notes) — generation was verified by grepping the output for known
+  sensitive strings (names, booking IDs, PNR), and `node --check` passed,
+  but nobody has actually loaded `kyushu-dec-2026/public/index.html` in a
+  browser to confirm it renders/looks right. Also not yet committed or
+  pushed to the repo, so it isn't live on GitHub Pages yet either.
