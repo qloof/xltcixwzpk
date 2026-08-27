@@ -712,7 +712,15 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
         if (lat && lon) {
           wazeLink.href = `https://waze.com/ul?ll=${lat},${lon}&navigate=no`;
           wazeLink.style.display = '';
-          gmapsLink.href = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
+          // Location-anchored text search, not a bare-coords pin: the
+          // @lat,lon segment biases Google's match to this exact spot, so a
+          // same-named place elsewhere (a chain, an unrelated restaurant)
+          // doesn't win over the one actually on this card. Falls back to a
+          // plain coords pin only if the location text is somehow empty.
+          const name = locEl.textContent.trim();
+          gmapsLink.href = name
+            ? `https://www.google.com/maps/search/${encodeURIComponent(name)}/@${lat},${lon},17z`
+            : `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
           gmapsLink.style.display = '';
         } else {
           wazeLink.style.display = 'none';
@@ -1208,7 +1216,12 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
         if (lat && lon) {
           wazeLink.href = `https://waze.com/ul?ll=${lat},${lon}&navigate=no`;
           wazeLink.style.display = '';
-          gmapsLink.href = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
+          // Location-anchored text search — see the itinerary-card
+          // updateNavLinks() for why (disambiguates same-named places).
+          const name = nameEl.textContent.trim();
+          gmapsLink.href = name
+            ? `https://www.google.com/maps/search/${encodeURIComponent(name)}/@${lat},${lon},17z`
+            : `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
           gmapsLink.style.display = '';
         } else {
           wazeLink.style.display = 'none';

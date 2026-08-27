@@ -107,6 +107,24 @@ restyle from scratch on future changes.
                 separate cards after the user caught it) — don't repeat
                 that mistake on new trips or new days.
 
+                **STANDING RULE (2026-08-27): every food/restaurant
+                `itinerary` card must have `lat`/`lon` filled in at creation
+                time, not left blank.** The Google Maps/Waze buttons render
+                automatically whenever a card has coordinates, and the
+                Google Maps button opens the actual place listing — photos,
+                reviews, hours — by running a location-anchored search on
+                the card's name (`/maps/search/{name}/@{lat},{lon},17z`)
+                rather than dropping a bare pin. The anchor is what
+                disambiguates same-named places (a chain, or an unrelated
+                place sharing a name elsewhere) — without coordinates,
+                there's no anchor and the button doesn't render at all.
+                Omitting coordinates (as happened with Tsuruchan, Umazakura,
+                Warokuya, Kagomma Furusato Yataimura, and the Dec 28 yatai
+                card on the Kyushu trip) silently drops the button entirely,
+                with no error. Geocode the venue's real address the same way
+                every other card's coordinates are verified — don't leave
+                `lat`/`lon` blank "for later."
+
                 **STANDING RULE (2026-08-24): write all clock times in
                 12-hour format with am/pm** (e.g. `8:10am`, `3:00pm`), not
                 24-hour (`08:10`, `15:00`), in every `planItems`/`location`/
@@ -738,15 +756,24 @@ since that card was already built as an HTML template string inside
   the property), so its pin is manually set to the nearest resolvable
   landmark (Kirishima Jingū Station) with `coordsManual: true` and a note
   on the card flagging it as approximate.
-  **Google Maps link (added History #25).** A second nav-app link next to
-  Waze on both Itinerary and Accommodations cards, `"View in Google
-  Maps →"`, using Google's documented "show this place" URL scheme
-  (`https://www.google.com/maps/search/?api=1&query={lat},{lon}` — see
-  History #29 for why this is the `search` endpoint, not `dir`) — opens
-  the native app on mobile if installed, falls back to the web app
-  otherwise. No new data fields: it's derived from the same `lat`/`lon`
-  already tracked for Waze, so the per-card `updateWazeLink()` closure in
-  both `renderItinerary()` and `renderAccommodations()` was renamed to
+  **Google Maps link (added History #25, URL scheme changed 2026-08-27).**
+  A second nav-app link next to Waze on both Itinerary and Accommodations
+  cards, `"View in Google Maps →"`. Originally used Google's documented
+  "show this place" URL scheme (`?api=1&query={lat},{lon}` — see History
+  #29 for why `search`, not `dir`), but that opens a bare unlabeled pin with
+  no place info — not what "review the food place we're heading to" needs.
+  Now uses a location-anchored text search instead:
+  `https://www.google.com/maps/search/{name}/@{lat},{lon},17z` — the
+  `@lat,lon,zoom` segment biases Google's match to that exact spot, so a
+  same-named place elsewhere (a chain, an unrelated restaurant) doesn't win
+  over the one actually on the card, while still opening the real listing
+  (photos/reviews/hours) rather than a pin. `name` is the card's own
+  `location`/`name` field, URL-encoded; falls back to the old coords-only
+  query if that text is ever empty. Opens the native app on mobile if
+  installed, falls back to the web app otherwise. No new data fields: it's
+  derived from the same `lat`/`lon`/`location` already tracked for Waze/the
+  card itself, so the per-card `updateWazeLink()` closure in both
+  `renderItinerary()` and `renderAccommodations()` was renamed to
   `updateNavLinks()` and extended to set both links' `href`/visibility
   together, rather than adding a second, separately-triggered function.
   Same scope decision as Waze: not added to Car Rental, since pickup/
