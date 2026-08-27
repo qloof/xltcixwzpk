@@ -154,17 +154,6 @@ function renderContacts(trip) {
   </div>`).join('')}</div>`;
 }
 
-function renderPhrases(trip) {
-  const items = Object.values(trip.phrases || {});
-  if (!items.length) return '<p class="section-hint">None listed.</p>';
-  return `<div class="contact-grid">${items.map((p) => `<div class="card contact-card">
-    <div class="field-label">${esc(p.situation)}</div>
-    <div class="field">${esc(p.phrase)}</div>
-    ${p.romaji ? `<div class="field"><span class="field-label">Romaji</span>${esc(p.romaji)}</div>` : ''}
-    ${p.notes ? `<div class="field"><span class="field-label">Notes</span>${esc(p.notes)}</div>` : ''}
-  </div>`).join('')}</div>`;
-}
-
 function renderExtras(trip) {
   const items = Object.values(trip.extras || {});
   if (!items.length) return '<p class="section-hint">None listed.</p>';
@@ -242,7 +231,6 @@ ${style}
 
   <section><h2>Day by day</h2>${renderItinerary(trip)}</section>
   <section><h2>Contacts</h2>${renderContacts(trip)}</section>
-  <section><h2>Language</h2>${renderPhrases(trip)}</section>
   <section><h2>Extras</h2>${renderExtras(trip)}</section>
   <section><h2>Bookings</h2>${renderBookings(trip)}</section>
 

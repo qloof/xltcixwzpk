@@ -887,9 +887,12 @@ since that card was already built as an HTML template string inside
   phone/website) are kept, not stripped** — the user explicitly clarified
   those are establishment contacts (hotels, ferry operator, JAF), not
   traveler personal info, a distinction easy to miss since the field is
-  literally named "Contacts." Itinerary, Language, Extras, and Bookings
-  (flight numbers/times/routes, hotel names/dates, car rental company/
-  dates) are kept — the actual point of sharing a trip. Per-card Google
+  literally named "Contacts." Itinerary, Extras, and Bookings (flight
+  numbers/times/routes, hotel names/dates, car rental company/dates) are
+  kept — the actual point of sharing a trip. **Language/Phrases tab
+  dropped from the public page (2026-08-27, user request)** — "not
+  everyone needs it"; `renderPhrases()` removed from the script entirely
+  rather than left as dead code. Per-card Google
   Maps/Waze links are regenerated in the static page using the same
   location-anchored URL scheme as the live app. Verified end-to-end
   against real Kyushu data: `node --check` passed, then grepped the
