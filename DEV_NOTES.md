@@ -223,6 +223,22 @@ a secret — it's meant to be public for Firebase web apps. GitHub's secret
 scanner will flag it; that's a false positive, already explained to the
 user. Access control is the DB rules above, not the key.
 
+**STANDING RULE, elevated here after being hit twice (History #30 and
+#31): when writing non-ASCII text (em-dashes, curly quotes, middle dots
+`·`) to Firebase via `curl` on this Windows/Git-Bash setup, never pass it
+inline as a `curl -d "..."` argument** — argv text does not survive as
+UTF-8 that way, and it silently corrupts into `�` with no error, no
+warning, nothing visibly wrong in the command itself. Write the JSON
+payload to a file first and send it with `curl --data-binary @file.json`
+instead. This was documented once already in History #30's prose and got
+missed/repeated in History #31 anyway — bolding it here as an actual
+standing rule (not just a History anecdote) specifically because burying
+it in narrative history wasn't enough to stop it recurring. **Re-fetch and eyeball the actual stored value after any REST write
+containing non-ASCII characters**, as a matter of habit — both times this
+bug happened the corruption was visible in curl's own echoed response
+too, so a careful look at the echo would have caught it, but a fresh
+GET is the more reliable check and takes one extra command.
+
 ## Folder / URL convention — one subfolder per trip
 
 ```
@@ -1493,6 +1509,39 @@ since that card was already built as an HTML template string inside
     specifically rather than assuming every geocoded coordinate is
     trustworthy. Then added the Language tab (see Feature notes) at the
     user's request, explicitly for future trips too, not just Kyushu.
+31. Long multi-part session (2026-08-27), roughly in order — full detail
+    in Feature notes above, this is the narrative summary:
+    - Backfilled `lat`/`lon` on 5 Kyushu food cards that had never had it
+      (button-visibility gate is coordinates, food-ness isn't tracked as
+      its own field — see the food-card standing rule above).
+    - User flagged that the Google Maps button opened a bare unlabeled
+      pin, not the actual place — switched to a location-anchored text
+      search (`/maps/search/{name}/@{lat},{lon},17z}`), which also
+      resolves the ambiguity problem (same-named places elsewhere) since
+      the coordinates anchor the search.
+    - Set up a local point-in-time backup system for the Firebase data
+      (outside this repo — see `~/.claude/settings.json`'s
+      `UserPromptSubmit` hook, not `app.js`): triggers on any prompt
+      containing "trip," reads every trip from `trips.json`, backs each
+      up to a dated JSON file with rolling 10-file retention per trip.
+      Not part of this codebase's own files, flagged here so a future
+      session working on this repo knows it exists.
+    - Built the public share snapshot feature (see Feature notes) —
+      including catching and fixing a real security hole in the first
+      design (nested `<tripId>/public/` path, one URL-edit from the live
+      editable dashboard) before it ever shipped.
+    - Added URL auto-linkification in plan-item cards (see Feature notes)
+      and a Visit Japan Web registration step + link on Kyushu's Dec 18
+      card, researched fresh rather than from memory — caught that the
+      well-known `vjw-lp.digital.go.jp` URL had gone stale (301-redirects
+      to `services.digital.go.jp/en/visit-japan-web/` now).
+    - Repeated the exact em-dash/curl-inline-argv UTF-8 bug already
+      logged in History #30 — see the new standing rule in "Database
+      rules" above, elevated specifically because the History-only
+      version of this lesson didn't prevent a repeat.
+    - Reconciled this file and `kyushu-dec-2026-itinerary.md`'s status
+      block at the end of the session rather than leaving newer inline
+      updates sitting alongside stale top-of-file summary text.
 
 ## Still open / natural next steps
 
@@ -1532,7 +1581,10 @@ Keep this section scoped to real engineering/testing debt only.
   someone.
 - **Public share snapshot not yet opened in a real browser** (see Feature
   notes) — generation was verified by grepping the output for known
-  sensitive strings (names, booking IDs, PNR), and `node --check` passed,
-  but nobody has actually loaded `kyushu-dec-2026/public/index.html` in a
-  browser to confirm it renders/looks right. Also not yet committed or
-  pushed to the repo, so it isn't live on GitHub Pages yet either.
+  sensitive strings (names, booking IDs, PNR) and by `node --check`, but
+  nobody has actually loaded either trip's public page in a browser to
+  confirm it renders/looks right. **Correction: this IS committed and
+  pushed and live now** — an earlier version of this note said otherwise;
+  that was true only in the gap before the first commit, not anymore.
+  Current URLs are tracked in `share-slugs.json`, not a fixed path (see
+  Feature notes for why — the URL rotates on every regeneration).
