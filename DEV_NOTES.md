@@ -751,12 +751,22 @@ since that card was already built as an HTML template string inside
   display uses), and every record has a `pdfUrl` text field plus a "📄 View
   PDF →" link (`wirePdfLink()`, reusing `.nav-link` — the same class the
   Waze link uses) that only shows once that field has a value. `pdfUrl` is
-  just a plain URL a human pastes in — for `kyushu-dec-2026` these point at
-  real files checked into `kyushu-dec-2026/docs/` in this repo (e-tickets,
-  Agoda confirmations), copied over from the planning folder outside the
-  dashboard repo, so GitHub Pages serves them as ordinary static files with
-  no extra hosting setup. Nothing stops a future trip's pdfUrl from
-  pointing at an external link (Google Drive, etc.) instead.
+  just a plain URL a human pastes in.
+  **SUPERSEDED 2026-08-28 — see "Privacy" below, read it before touching
+  `pdfUrl` on any trip.** This paragraph originally said `kyushu-dec-2026`'s
+  `pdfUrl`s pointed at real files checked into `kyushu-dec-2026/docs/` in
+  this repo (e-tickets, Agoda confirmations). That was wrong to do — this
+  repo is a **public** GitHub repo, so anything checked in there (docs/
+  folder or otherwise) is fetchable by anyone who finds the repo, not just
+  people with a trip's URL. Found 2026-08-28 when a full e-ticket PDF
+  (name + PNR + barcode) turned out to have been sitting there since
+  2026-08-21 — enough to potentially pull up the booking on the airline's
+  own site. All 6 PDFs that had been committed were purged from git history
+  (`git filter-repo` + force-push) and every trip's `pdfUrl`/`pdfUrl2` now
+  point at files in a **private, per-trip Google Drive folder** (Restricted
+  access, shared only with the specific co-travelers) instead. Never check
+  a real booking document into this repo again — see "Privacy" below for
+  the actual rule and the reasoning.
   **Waze link on Accommodations (added right after).** Reuses itinerary's
   exact auto-geocode-on-blur pattern (`geocodeLocation()`, the
   `coordsManual` flag, the `± coordinates` toggle, the `↺ reset to auto`
@@ -980,6 +990,64 @@ since that card was already built as an HTML template string inside
   server-side queue — it survives a closed tab/app on the *same device*,
   but two people editing conflicting fields while both offline still
   resolves as last-write-wins once both reconnect, same as the online case.
+
+<!-- update-docs: verified 2026-08-29 (kyushu-dec-2026) via git log — this section plus the Kyushu-specific History entries below it checked for drift; use `git log --since=2026-08-29 -- trip-dashboard/DEV_NOTES.md` next time -->
+## Privacy — what never goes in the public repo (added 2026-08-28)
+
+**This repo (`qloof/trip-dashboard`) is public.** GitHub Pages serves it,
+and being public means the file tree, full commit history, and every raw
+file are browsable/searchable at `github.com/qloof/trip-dashboard` by
+anyone who finds it — not just people with a trip's URL. This is a
+materially bigger exposure than the "no login/auth" limitation above,
+which at least requires knowing the specific trip URL. Making the repo
+private does **not** fix this either: on GitHub Free/Pro, a Pages site
+built from a private repo is still served at the same public URL with no
+auth — only GitHub Enterprise has real access-controlled Pages. So repo
+privacy would hide the repo browser/history but not anything the live
+dashboard actually links to.
+
+**The incident (2026-08-28):** 6 real booking PDFs (Thai Airways
+e-tickets, Agoda/hotel confirmations) had been committed to
+`kyushu-dec-2026/docs/` and pushed on 2026-08-21/22, per the old advice in
+the Bookings-tab feature note above. One e-ticket carried full name + PNR
++ ticket barcode — on some airlines, enough to pull up or modify a booking
+via "Manage My Booking." The hotel confirmations carried masked card
+numbers and a Booking.com PIN. All of this had been sitting in a public
+repo, unnoticed, for about a week.
+
+**Fix applied:** the 6 files were purged from every commit
+(`git filter-repo --path ... --invert-paths --force`, then
+`git push --force origin main`) — note this rewrites history and orphans
+the old commit hashes; anyone else with a local clone needs to re-clone,
+not pull. Every trip's private documents were moved to a **per-trip Google
+Drive folder**, general access set to "Restricted," shared only with that
+trip's specific travelers (not "Anyone with the link"). Dashboard
+`pdfUrl`/`pdfUrl2` fields now point at those Drive file links
+(`https://drive.google.com/file/d/<id>/view?usp=sharing`) — a viewer only
+gets the file if they're logged into Google as one of the people the
+folder was shared with; anyone else hitting the link gets a
+request-access screen instead of the document.
+
+**The rule, going forward, for this repo and every trip under it:**
+- Never `git add`/commit an actual booking document (e-ticket, hotel/car
+  voucher, insurance terms, anything with a name + booking ref, card
+  digits, a PIN, or a barcode/QR that could be scanned) into this repo.
+  `docs/` folders under a trip slug should not exist anymore — if you see
+  one with real files in it, that's the old pattern, fix it the same way.
+- Put real documents in that trip's private Drive folder instead (see
+  each trip's planning folder on Drive, e.g.
+  `X:\My Drive\Claude\Trip Dashboard\<slug>\Dashboard Docs (private
+  share)\`), share it Restricted to the actual co-travelers by email, and
+  point `pdfUrl` at the resulting `drive.google.com/file/d/...` link.
+- This applies to **every** trip folder in this repo, not just
+  `kyushu-dec-2026` — check any other trip (e.g. `australia-dec-2026`) for
+  the same pattern before assuming it's clean.
+- Card numbers (even masked/last-4), confirmation PINs, and full ticket
+  barcodes are all treated as sensitive here — the bar is "could this help
+  someone impersonate the booking or the traveler," not just "is it a full
+  card number."
+- If a `pdfUrl` for a new trip's card is about to point at anything other
+  than a private Drive link, stop and ask before committing/pushing.
 
 ## History (why things are the way they are)
 
@@ -1542,6 +1610,55 @@ since that card was already built as an HTML template string inside
     - Reconciled this file and `kyushu-dec-2026-itinerary.md`'s status
       block at the end of the session rather than leaving newer inline
       updates sitting alongside stale top-of-file summary text.
+
+32. Multi-part session (2026-08-28/29), roughly in order:
+    - Hi-Hi Car Rental voucher arrived — reviewed it and the insurance
+      terms for real risk (not just data entry): driver/IDP fields blank
+      on the voucher, insurance exclusions that survive even with CDW
+      paid (punctures, lost keys, theft), the accident-protocol
+      requirement (must contact both police and Hi-Hi or CDW voids),
+      payment due in full at pickup. Logged as Extras-tab entries on the
+      live dashboard, not just prose.
+    - **Found and fixed the privacy incident this "Privacy" section (added
+      this session, see above) describes**: 6 real booking PDFs had been
+      sitting in this public repo since 2026-08-21/22 per the old advice
+      in the Bookings-tab feature note. Purged from git history, moved to
+      a private per-trip Drive folder (`kyushu-dec-2026/Dashboard Docs
+      (private share)/`), every affected `pdfUrl`/`pdfUrl2` repointed.
+      Extracting each file's Drive share link via browser automation was
+      unreliable (clipboard-read kept silently failing mid-session) —
+      gave up on full automation partway through and had the user paste
+      the remaining share links directly; matched them to filenames by
+      opening each link and reading the resulting tab title
+      (`<filename> - Google Drive`) rather than guessing from list order.
+    - Created 4 accommodation cards that had never been seeded (Sotetsu
+      Grand Fresa Kumamoto, Solest Takachiho, JR Kyushu Hotel Kagoshima,
+      Hotel Reference Tenjin III) — found while matching PDFs to cards,
+      not something anyone had flagged. Geocoded via Nominatim
+      (OpenStreetMap) since guessing coordinates wasn't acceptable; one
+      resolved to the exact building (Solest Takachiho), the rest to
+      street/district level, all marked `coordsManual: true`.
+    - Verified (`git ls-files`, then a live Firebase walk for `docs/`-
+      relative `pdfUrl` strings) that `australia-dec-2026` — the repo's
+      other trip — was never affected: nothing seeded there yet.
+    - Hash-verified (SHA-1, not just filename/size) that the local
+      `Accomodations/`, `Car Rental/`, `Flights/` planning subfolders
+      were fully superseded by `Dashboard Docs (private share)/` before
+      telling the user it was safe to bin them.
+    - Cleaned up unrelated cruft found along the way in
+      `Trip Dashboard/firebase-backups/`: an `all-trips-2026-08-27.json`
+      containing a raw `{"error":"Permission denied"}` from the backup
+      hook once trying to back up a non-trip slug during the "all-trips
+      landing page" feature work, plus 21 empty dated files from testing
+      the hook's retention pruning (`kyushu-dec-2026`/`testslug`,
+      backdated to January 2026). All identified by content, not
+      guessed from filenames, before being sent to the Recycle Bin.
+    - This "Privacy" section itself, plus the matching update to
+      `live-dashboard-setup.md` and a reconciled "Open items" list there
+      (most of the 2026-08-22 list was stale/done by now), are this
+      session's actual doc output — written so the next trip's setup
+      starts from the corrected instructions, not the ones that caused
+      the incident.
 
 ## Still open / natural next steps
 
