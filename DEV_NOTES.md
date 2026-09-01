@@ -14,9 +14,10 @@ restyle from scratch on future changes.
 
 ## Stack, and why
 
-- **Hosting: GitHub Pages**, repo `qloof/trip-dashboard`, served from `main`
-  branch root. Chosen because the user already had a GitHub account — no new
-  signup needed, and it's free static hosting.
+- **Hosting: GitHub Pages**, repo `qloof/xltcixwzpk` (renamed 2026-09-02 from
+  `qloof/trip-dashboard` — see "Repo renamed to an opaque name" below),
+  served from `main` branch root. Chosen because the user already had a
+  GitHub account — no new signup needed, and it's free static hosting.
 - **Shared live state: Firebase Realtime Database**, project
   `trip-dashboard-c6f8a`, **Spark (free) plan — do not upgrade to Blaze**
   without an explicit reason; Spark means zero billing risk regardless of
@@ -994,9 +995,10 @@ since that card was already built as an HTML template string inside
 <!-- update-docs: verified 2026-08-29 (kyushu-dec-2026) via git log — this section plus the Kyushu-specific History entries below it checked for drift; use `git log --since=2026-08-29 -- trip-dashboard/DEV_NOTES.md` next time -->
 ## Privacy — what never goes in the public repo (added 2026-08-28)
 
-**This repo (`qloof/trip-dashboard`) is public.** GitHub Pages serves it,
-and being public means the file tree, full commit history, and every raw
-file are browsable/searchable at `github.com/qloof/trip-dashboard` by
+**This repo (`qloof/xltcixwzpk`, renamed 2026-09-02 from `qloof/trip-dashboard`
+— see "Repo renamed to an opaque name" below) is public.** GitHub Pages
+serves it, and being public means the file tree, full commit history, and
+every raw file are browsable/searchable at `github.com/qloof/xltcixwzpk` by
 anyone who finds it — not just people with a trip's URL. This is a
 materially bigger exposure than the "no login/auth" limitation above,
 which at least requires knowing the specific trip URL. Making the repo
@@ -1048,6 +1050,63 @@ request-access screen instead of the document.
   card number."
 - If a `pdfUrl` for a new trip's card is about to point at anything other
   than a private Drive link, stop and ask before committing/pushing.
+
+### Repo renamed to an opaque name + root landing page removed (2026-09-02)
+
+Longfen raised this after fixing the exact same issue on an unrelated project
+(a student portal): the repo name `trip-dashboard` was itself a guessable
+top-level URL segment (GitHub Pages always serves a project site at
+`https://<user>.github.io/<repo-name>/` — the repo name **is** the entry
+point, no folder-level trick hides it). Unlike the PDF incident above, this
+wasn't about the repo being public — it was about the site's address being
+easy to guess/type by anyone, not just people with a specific trip's link.
+
+**What changed:**
+- **Repo renamed** `qloof/trip-dashboard` → `qloof/xltcixwzpk` (random
+  opaque string). Every hardcoded absolute path referencing the old name —
+  `<link rel="icon" href="/trip-dashboard/...">`, the service worker
+  registration path in `app.js`, `manifest.json` (root + every trip's own
+  copy), `scripts/new-trip.mjs`'s icon/console-log URLs, and
+  `scripts/build-public.mjs`'s printed share URL — was updated to the new
+  name. **Not touched**: `trip-dashboard-c6f8a` (the Firebase project
+  id/authDomain/databaseURL — an unrelated identifier that happens to share
+  the old name as a substring; renaming the Firebase project is a separate,
+  much bigger operation and wasn't needed here) and `'trip-dashboard-shell-v3'`
+  (the Cache Storage key in `sw.js` — purely internal, not a URL).
+- **Root `index.html` (the trip-listing landing page) deleted.** Longfen
+  chose this deliberately after being shown the tradeoff: keeping even an
+  opaquely-hosted landing page means anyone who reaches *one* trip's link
+  and strips it back to the bare root sees **every** trip listed by full
+  title/dates and can click into any of them — the same cross-contamination
+  risk as the student-portal case. He accepted losing the one-click
+  trip-switcher convenience in exchange for that. The bare repo root now
+  404s. `trips.json` itself was left in place (still used by
+  `scripts/new-trip.mjs` to register new trips locally) even though nothing
+  on the live site reads it anymore.
+- **Consequence, already hit once**: this move breaks every previously
+  shared link — including public share-snapshot links already sent to
+  friends/family (e.g. the old `.../trip-dashboard/6mybgbc3jt4h/` is now a
+  404; the same snapshot now lives at `.../xltcixwzpk/6mybgbc3jt4h/`).
+  **Any link handed out before 2026-09-02 needs to be re-sent** — check
+  `share-slugs.json` for the current mapping before assuming an old message
+  still points somewhere live.
+- **What this does and doesn't fix**: this stops *casual/blind* discovery
+  (guessing "trip-dashboard" as an obvious name, or a search engine
+  indexing it). It does **not** change the underlying trust model — the DB
+  rules are still wide open (see "Database rules" above) and the repo is
+  still public on GitHub itself (source browsable via `github.com/qloof/
+  xltcixwzpk` by anyone who finds *that* name, independent of what Pages
+  serves) — so this is a real but partial mitigation, not a fix for the
+  "no auth" design. Consistent with the accepted trust model though: whoever
+  has a specific link can access that trip, same as before.
+
+If the repo ever needs renaming again: `gh repo rename <new-name> --repo
+qloof/xltcixwzpk`, then `git remote set-url origin
+https://github.com/qloof/<new-name>.git` (rename does **not** auto-update
+the local remote), then repeat the same `/trip-dashboard/`-style path sweep
+above for the new name.
+
+<!-- update-docs: verified 2026-09-02 (repo-rename) against gh repo view + git remote -v + live curl checks -->
 
 ## History (why things are the way they are)
 
