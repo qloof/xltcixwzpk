@@ -294,7 +294,7 @@ async function buildOne(tripId) {
   slugMap[tripId] = slug;
   saveSlugMap(slugMap);
 
-  console.log(`  ✓ ${tripId} → https://qloof.github.io/trip-dashboard/${slug}/`);
+  console.log(`  ✓ ${tripId} → https://qloof.github.io/xltcixwzpk/${slug}/`);
 }
 
 async function main() {

@@ -26,7 +26,7 @@ self.addEventListener('install', event => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE).then(cache => cache.addAll([
-      '/trip-dashboard/icon.svg',
+      '/xltcixwzpk/icon.svg',
     ]).catch(() => {}))
   );
 });

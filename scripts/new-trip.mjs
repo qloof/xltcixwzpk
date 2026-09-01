@@ -102,7 +102,7 @@ const manifest = {
   display: 'standalone',
   background_color: '#F0EEE6',
   theme_color: '#16233F',
-  icons: [{ src: '/trip-dashboard/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }],
+  icons: [{ src: '/xltcixwzpk/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }],
 };
 fs.writeFileSync(path.join(tripDir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
 
@@ -139,4 +139,4 @@ console.log('');
 console.log('Next steps (see DEV_NOTES.md "To start a new real trip"):');
 console.log('  1. git add, commit, push from this clone.');
 console.log('  2. GitHub Pages redeploys in ~1-2 min.');
-console.log(`  3. Open https://qloof.github.io/trip-dashboard/${slug}/ once to trigger the seed-on-first-load, confirm "Synced".`);
+console.log(`  3. Open https://qloof.github.io/xltcixwzpk/${slug}/ once to trigger the seed-on-first-load, confirm "Synced".`);

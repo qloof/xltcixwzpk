@@ -1396,7 +1396,7 @@ export function initTripDashboard({ tripId, tripLabel, tripSeed }) {
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/trip-dashboard/sw.js').catch(() => {});
+      navigator.serviceWorker.register('/xltcixwzpk/sw.js').catch(() => {});
     });
   }
 }
