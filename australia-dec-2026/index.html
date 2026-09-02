@@ -165,6 +165,26 @@
   .offline-banner { display: none; font-family: var(--font-mono); font-size: 11.5px; color: #7A3B10; background: #F3DCC0; border: 1px solid #D9A15C; border-radius: var(--radius); padding: 8px 12px; margin-top: 10px; }
   .offline-banner.show { display: block; }
 
+  /* Password gate (added 2026-09-02) — client-side speed bump only, same
+     tradeoff/pattern as the Student Portal's gate (see that project's
+     DEV_NOTES.md "Password model"): visible in page source, deters
+     casual link-forwarding, not real security. Real server-side auth is
+     the planned Pangolin/VPS follow-up — see this repo's DEV_NOTES.md
+     "Known limitations". Unlike the portal, initTripDashboard() (which
+     opens the Firebase connection) is only called AFTER unlock, so no
+     data round-trip happens pre-password either. */
+  body.locked .wrap { display: none; }
+  body:not(.locked) #gate-overlay { display: none; }
+  #gate-overlay { max-width: 400px; margin: 64px auto; padding: 0 20px; }
+  #gate-overlay .gate-box { display: flex; flex-direction: column; gap: 14px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 28px; box-shadow: 0 24px 48px -24px rgba(22, 35, 63, 0.25); }
+  #gate-overlay h1 { font-family: var(--font-display); font-weight: 600; font-size: 1.4rem; margin: 0 0 6px; color: var(--ink); }
+  #gate-overlay p { font-family: var(--font-body); color: var(--ink-soft); font-size: 0.9rem; margin: 0 0 8px; line-height: 1.5; }
+  #gate-overlay input { font-family: var(--font-mono); padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper-dim); color: var(--ink); font-size: 1rem; }
+  #gate-overlay input:focus { outline: 1px dashed var(--brass); outline-offset: 2px; }
+  #gate-overlay button { font-family: var(--font-mono); font-weight: 600; padding: 12px 14px; border: none; border-radius: var(--radius); background: var(--brass); color: var(--paper); font-size: 0.95rem; cursor: pointer; }
+  #gate-overlay button:hover { background: #a3781f; }
+  #gate-error { font-family: var(--font-mono); color: #A8455A; font-size: 0.85rem; min-height: 1em; }
+
   @media print {
     .tabs, .add-row, .remove-row, .tier-add, .toolbar, #mapView, .offline-banner, .share-panel, #help { display: none !important; }
     .panel { display: block !important; margin-top: 14px; }
@@ -173,7 +193,16 @@
   }
 </style>
 </head>
-<body>
+<body class="locked">
+<div id="gate-overlay">
+  <div class="gate-box">
+    <h1>This trip is locked</h1>
+    <p>Enter the shared password to view and edit this trip.</p>
+    <input id="gate-input" type="password" placeholder="Password" autocomplete="off" spellcheck="false">
+    <button id="gate-btn" type="button">Unlock</button>
+    <div id="gate-error"></div>
+  </div>
+</div>
 <div class="wrap">
 
   <div class="stub">
@@ -456,8 +485,8 @@
         <p>Turns the page into a clean, printable version (hides the tabs and buttons) if you'd like a paper copy or a PDF — your browser or phone's own print/save-as-PDF option handles the rest.</p>
       </div>
       <div class="help-item">
-        <p class="help-title">Anyone with this link can edit it</p>
-        <p>There's no password or login — whoever has this exact web address can view and change everything on it. Only share the link with people you'd trust to edit the trip.</p>
+        <p class="help-title">Anyone with this link and the password can edit it</p>
+        <p>This page asks for a shared password before showing anything. It's a light speed bump, not a real login — someone determined enough could still get in. Only share the link and password with people you'd trust to edit the trip.</p>
       </div>
       <div class="help-item">
         <p class="help-title">If you edit while offline</p>
@@ -478,6 +507,7 @@
   // PER-TRIP SETTINGS — see DEV_NOTES.md "Extract shared engine
   // into app.js" — all rendering/sync logic lives there now.
   // ============================================================
+  function start() {
   initTripDashboard({
     tripId: 'australia-dec-2026',
     tripLabel: 'AUS · DEC 2026',
@@ -553,6 +583,28 @@
       ],
     },
   });
+  }
+
+  // Password gate — see DEV_NOTES.md "Known limitations". Client-side
+  // only, deliberately: Firebase doesn't connect (start() isn't called)
+  // until the correct password is entered, so this also delays the DB
+  // round-trip, not just the display.
+  var GATE_PASSWORDS = ['132c-436974'];
+  (function () {
+    var input = document.getElementById('gate-input');
+    var btn = document.getElementById('gate-btn');
+    var err = document.getElementById('gate-error');
+    function tryUnlock() {
+      if (GATE_PASSWORDS.indexOf(input.value) !== -1) {
+        document.body.classList.remove('locked');
+        start();
+      } else {
+        err.textContent = 'Incorrect password.';
+      }
+    }
+    btn.addEventListener('click', tryUnlock);
+    input.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') tryUnlock(); });
+  })();
 </script>
 </body>
 </html>

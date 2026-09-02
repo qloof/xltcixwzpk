@@ -31,6 +31,14 @@ import { dirname, join } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, '..');
+// trips.json and share-slugs.json live one level up, OUTSIDE the published
+// git repo (moved 2026-09-02) — neither is read by any live page (the
+// root landing page that used to read trips.json was deleted, see
+// DEV_NOTES.md "Root index.html deleted"), so publishing them only handed
+// out a plaintext directory of every private trip slug for free. Same
+// "keep build-only bookkeeping outside the public tree" pattern as
+// Student Portal's portal_passwords.json.
+const PROJECT_ROOT = join(REPO_ROOT, '..');
 const DB_URL = 'https://trip-dashboard-c6f8a-default-rtdb.asia-southeast1.firebasedatabase.app';
 
 // Traveler name tokens to scrub from free text wherever they appear.
@@ -247,7 +255,7 @@ ${style}
 `;
 }
 
-const SLUG_MAP_PATH = join(REPO_ROOT, 'share-slugs.json');
+const SLUG_MAP_PATH = join(PROJECT_ROOT, 'share-slugs.json');
 const SLUG_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
 
 function loadSlugMap() {
@@ -302,7 +310,7 @@ async function main() {
   if (arg) {
     await buildOne(arg);
   } else {
-    const manifest = JSON.parse(readFileSync(join(REPO_ROOT, 'trips.json'), 'utf8'));
+    const manifest = JSON.parse(readFileSync(join(PROJECT_ROOT, 'trips.json'), 'utf8'));
     for (const t of manifest) await buildOne(t.slug);
   }
 }
