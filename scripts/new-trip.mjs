@@ -102,13 +102,13 @@ const manifest = {
 };
 fs.writeFileSync(path.join(tripDir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
 
-// trips.json lives one level up, OUTSIDE the published repo (moved
-// 2026-09-02) — no live page reads it anymore (the root landing page that
-// used to was deleted, see DEV_NOTES.md "Root index.html deleted"), so
-// keeping it inside the repo only published a plaintext list of every
-// private trip slug for no functional reason. It's now build-only
-// bookkeeping, same pattern as Student Portal's portal_passwords.json.
-const tripsJsonPath = path.join(repoRoot, '..', 'trips.json');
+// trips.json lives INSIDE the repo again as of 2026-09-07 — moved out
+// 2026-09-02 when the root landing page that reads it was deleted (to stop
+// publishing a plaintext list of every private trip slug unauthenticated),
+// then restored once Pangolin started gating the entire trip.qloof.cc
+// origin, making the landing page (and this file) safe to serve again. See
+// DEV_NOTES.md "Root index.html deleted" / "Password gate".
+const tripsJsonPath = path.join(repoRoot, 'trips.json');
 let trips = [];
 if (fs.existsSync(tripsJsonPath)) {
   try {
@@ -133,7 +133,7 @@ if (trips !== null) {
 console.log(`Created ${tripDir}${path.sep}`);
 console.log(`  - index.html  (tripId: ${slug})`);
 console.log('  - manifest.json');
-if (trips !== null) console.log('Added to trips.json (build-only bookkeeping, not published).');
+if (trips !== null) console.log('Added to trips.json (published — the root landing page reads this).');
 console.log('');
 console.log('Next steps (see DEV_NOTES.md "To start a new real trip"):');
 console.log('  1. git add, commit, push from this clone.');
