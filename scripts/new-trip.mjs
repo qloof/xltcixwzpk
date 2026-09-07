@@ -98,7 +98,7 @@ const manifest = {
   display: 'standalone',
   background_color: '#F0EEE6',
   theme_color: '#16233F',
-  icons: [{ src: '/xltcixwzpk/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }],
+  icons: [{ src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }],
 };
 fs.writeFileSync(path.join(tripDir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
 
@@ -107,7 +107,7 @@ fs.writeFileSync(path.join(tripDir, 'manifest.json'), JSON.stringify(manifest, n
 // publishing a plaintext list of every private trip slug unauthenticated),
 // then restored once Pangolin started gating the entire trip.qloof.cc
 // origin, making the landing page (and this file) safe to serve again. See
-// DEV_NOTES.md "Root index.html deleted" / "Password gate".
+// DEV_NOTES.md "Folder / URL convention" / "Password gate".
 const tripsJsonPath = path.join(repoRoot, 'trips.json');
 let trips = [];
 if (fs.existsSync(tripsJsonPath)) {
@@ -137,5 +137,6 @@ if (trips !== null) console.log('Added to trips.json (published — the root lan
 console.log('');
 console.log('Next steps (see DEV_NOTES.md "To start a new real trip"):');
 console.log('  1. git add, commit, push from this clone.');
-console.log('  2. GitHub Pages redeploys in ~1-2 min.');
-console.log(`  3. Open https://qloof.github.io/xltcixwzpk/${slug}/ once to trigger the seed-on-first-load, confirm "Synced".`);
+console.log('  2. Deploy to the VPS (primary): ssh netcup "cd /opt/sites/trip-dashboard && git pull"');
+console.log('     GitHub Pages (old fallback URL) redeploys itself automatically in ~1-2 min.');
+console.log(`  3. Open https://trip.qloof.cc/${slug}/ once to trigger the seed-on-first-load, confirm "Synced".`);
