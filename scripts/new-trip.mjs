@@ -68,12 +68,12 @@ let html = engineHtml.replace(/<title>[^<]*<\/title>/, `<title>${escapedTitle}</
 
 // Only the initTripDashboard({...}) call itself gets replaced — NOT the
 // whole <script type="module"> block. The engine's script block also
-// carries the password-gate wrapper (function start() {...} + the gate
-// unlock script, see DEV_NOTES.md "Password gate") — replacing the whole
-// block used to silently scaffold trips with no gate at all, since this
-// script's own hardcoded replacement never knew that logic existed. This
-// way whatever gate/wrapper code the engine template has is inherited
-// automatically, and only the per-trip settings change.
+// carries the function start() {...} wrapper (access is gated
+// server-side by Pangolin at trip.qloof.cc now, see DEV_NOTES.md
+// "Password gate" — no client-side gate lives in this file anymore) —
+// replacing the whole block would risk losing that wrapper if it ever
+// changes again. This way whatever wrapper code the engine template has
+// is inherited automatically, and only the per-trip settings change.
 const callRe = /initTripDashboard\(\{[\s\S]*?\n\s*\}\);/;
 if (!callRe.test(html)) {
   console.error(`Could not find the initTripDashboard({...}) call in ${enginePath} — has the engine template changed shape? Update this script's callRe if so.`);
